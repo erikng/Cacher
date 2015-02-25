@@ -49,11 +49,11 @@ peerbw=`echo $bwpeer2-$bwpeer1 | bc`
 
 ## Output data. Assume GB because well... If you need this script you're caching a $$$$ton of data.
 echo
-echo
 echo $clientbw GB Bandwidth served to clients.
+echo
 echo $requestedbw GB Bandwidth Requested consisting of:
-echo $applebw GB from Apple
-echo $peerbw GB from Other Caching Servers
+echo "  $applebw GB from Apple"
+echo "  $peerbw GB from Other Caching Servers"
 echo
 
 
@@ -72,7 +72,7 @@ uniqueipnumber=`wc -l "${tmplocation}"/Unique_IPs.txt | awk '{print $1}'`
 
 ## Output data.
 echo $totalipnumber IP Addresses hit the Caching Server yesterday consisting of:
-echo $uniqueipnumber Unique IP Addresses.
+echo "  $uniqueipnumber Unique IP Addresses."
 echo
 
 
@@ -128,22 +128,136 @@ totaliphonenumber=`wc -l "${tmplocation}"/Total_iPhone.txt | awk '{print $1}'`
 totalipadnumber=`wc -l "${tmplocation}"/Total_iPad.txt | awk '{print $1}'`
 totalipodnumber=`wc -l "${tmplocation}"/Total_iPod.txt | awk '{print $1}'`
 
+## Device Identifiers AppleTV (Only 3,1 and higher can run iOS 8)
+## Look for "AppleTV3,1" and output
+totalappletv31=`egrep -o "(AppleTV3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "AppleTV3,2" and output
+totalappletv32=`egrep -o "(AppleTV3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Device Identifiers iPhone (Only 3,1 and higher can run iOS 8)
+## Look for "iPhone3,1" and output
+totaliphone31=`egrep -o "(iPhone3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone3,3" and output
+totaliphone33=`egrep -o "(iPhone3,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone4,1" and output
+totaliphone41=`egrep -o "(iPhone4,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone5,1" and output
+totaliphone51=`egrep -o "(iPhone5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone5,1" and output
+totaliphone52=`egrep -o "(iPhone5,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone5,3" and output
+totaliphone53=`egrep -o "(iPhone5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone6,1" and output
+totaliphone61=`egrep -o "(iPhone6,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone6,2" and output
+totaliphone62=`egrep -o "(iPhone6,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone7,2" and output
+totaliphone72=`egrep -o "(iPhone7,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone7,1" and output
+totaliphone71=`egrep -o "(iPhone7,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Device Identifiers iPad (Only 2,1 and higher can run iOS 8)
+## Look for "iPad2,1" and output
+totalipad21=`egrep -o "(iPad2,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,2" and output
+totalipad22=`egrep -o "(iPad2,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,3" and output
+totalipad23=`egrep -o "(iPad2,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,4" and output
+totalipad24=`egrep -o "(iPad2,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,5" and output
+totalipad25=`egrep -o "(iPad2,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,6" and output
+totalipad26=`egrep -o "(iPad2,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad2,7" and output
+totalipad27=`egrep -o "(iPad2,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Look for "iPad3,1" and output
+totalipad31=`egrep -o "(iPad3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad3,2" and output
+totalipad32=`egrep -o "(iPad3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad3,3" and output
+totalipad33=`egrep -o "(iPad3,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad3,4" and output
+totalipad34=`egrep -o "(iPad3,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad3,5" and output
+totalipad35=`egrep -o "(iPad3,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad3,6" and output
+totalipad36=`egrep -o "(iPad3,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Look for "iPad4,1" and output
+totalipad41=`egrep -o "(iPad4,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,2" and output
+totalipad42=`egrep -o "(iPad4,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,4" and output
+totalipad44=`egrep -o "(iPad4,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,5" and output
+totalipad45=`egrep -o "(iPad4,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,7" and output
+totalipad47=`egrep -o "(iPad4,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,8" and output
+totalipad48=`egrep -o "(iPad4,8)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Look for "iPad5,3" and output
+totalipad53=`egrep -o "(iPad5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad5,4" and output
+totalipad54=`egrep -o "(iPad5,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
+## Device Identifiers iPod (Only 5,1 and higher can run iOS 8)
+## Look for "iPod5,1" and output
+totalipod51=`egrep -o "(iPod5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+
 ## Output data.
 echo A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of:
-echo $totalios800number iOS 8.0 Devices
-echo $totalios802number iOS 8.0.2 Devices
-echo $totalios810number iOS 8.1 Devices
-echo $totalios811number iOS 8.1.1 Devices
-echo $totalios812number iOS 8.1.2 Devices
-echo $totalios813number iOS 8.1.3 Devices
-echo $totalios820number iOS 8.2 Devices [Currently in Beta]
-echo $totalios830number iOS 8.3 Devices [Currently in Beta]
+echo "  $totalios800number iOS 8.0 Devices"
+echo "  $totalios802number iOS 8.0.2 Devices"
+echo "  $totalios810number iOS 8.1 Devices"
+echo "  $totalios811number iOS 8.1.1 Devices"
+echo "  $totalios812number iOS 8.1.2 Devices"
+echo "  $totalios813number iOS 8.1.3 Devices"
+echo "  $totalios820number iOS 8.2 Devices [Currently in Beta]"
+echo "  $totalios830number iOS 8.3 Devices [Currently in Beta]"
 echo 
 echo Of these devices, here is the model breakdown:
-echo $totalappletvnumber AppleTVs
-echo $totaliphonenumber iPhones
-echo $totalipadnumber iPads
-echo $totalipodnumber iPods
+echo "  $totalappletvnumber Total AppleTVs"
+echo "    $totalappletv31 3rd Generation Apple TVs"
+echo "    $totalappletv32 4th Generation Apple TVs"
+echo "  $totaliphonenumber Total iPhones"
+echo "    $totaliphone31 iPhone 4 [GSM]"
+echo "    $totaliphone33 iPhone 4 [CDMA]"
+echo "    $totaliphone41 iPhone 4S"
+echo "    $totaliphone51 iPhone 5 [GSM]"
+echo "    $totaliphone52 iPhone 5 [CDMA]"
+echo "    $totaliphone53 iPhone 5C"
+echo "    $totaliphone61 iPhone 5S"
+echo "    $totaliphone62 iPhone 5S [China Model]"
+echo "    $totaliphone72 iPhone 6"
+echo "    $totaliphone71 iPhone 6 Plus"
+echo "  $totalipadnumber Total iPads"
+echo "    $totalipad21 iPad 2nd Generation [Wifi]"
+echo "    $totalipad22 iPad 2nd Generation [Wifi + GSM]"
+echo "    $totalipad23 iPad 2nd Generation [Wifi + CDMA]"
+echo "    $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]"
+echo "    $totalipad31 iPad 3rd Generation [Wifi]"
+echo "    $totalipad32 iPad 3rd Generation [Wifi + GSM]"
+echo "    $totalipad33 iPad 3rd Generation [Wifi + CDMA]"
+echo "    $totalipad34 iPad 4th Generation [Wifi]"
+echo "    $totalipad35 iPad 4th Generation [Wifi + GSM]"
+echo "    $totalipad36 iPad 4th Generation [Wifi + CDMA]"
+echo "    $totalipad41 iPad Air 1st Generation [Wifi]"
+echo "    $totalipad42 iPad Air 1st Generation [Wifi + Cellular]"
+echo "    $totalipad53 iPad Air 2nd Generation [Wifi]"
+echo "    $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]"
+echo 
+echo "    $totalipad25 iPad Mini 1st Generation [Wifi]"
+echo "    $totalipad26 iPad Mini 1st Generation [Wifi + GSM]"
+echo "    $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]"
+echo "    $totalipad44 iPad Mini 2nd Generation [Wifi]"
+echo "    $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]"
+echo "    $totalipad47 iPad Mini 3rd Generation [Wifi]"
+echo "    $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]"
+echo "  $totalipodnumber Total iPods"
+echo "    $totalipod51 iPod Touch 5th Generation"
 echo 
 
 # Stage V: Extract OS X build number count.
@@ -166,9 +280,9 @@ total10103number=`wc -l "${tmplocation}"/Total_OS_X_10.10.3.txt | awk '{print $1
 
 ## Output data. Apple did not update the Darwin versions between 10.10.0 and 10.10.1 :(
 echo A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:
-echo $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]
-echo $total10102number OS X Yosemite 10.10.2 Devices
-echo $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]
+echo "  $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]"
+echo "  $total10102number OS X Yosemite 10.10.2 Devices"
+echo "  $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]"
 echo 
 
 # Stage VI: Extract URL's from log file, output into file and remove duplicates.
@@ -197,11 +311,11 @@ totalsregistersnumber=`wc -l "${tmplocation}"/Total_Server_Registers.txt | awk '
 
 ## Output data.
 echo A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:
-echo $totalepubnumber Books
-echo $totalipanumber iOS Apps
-echo $totalpkgnumber Mac Apps
-echo $totalzipnumber Zip files
-echo $totalsregistersnumber Apple Server Registrations
+echo "  $totalepubnumber Books"
+echo "  $totalipanumber iOS Apps"
+echo "  $totalpkgnumber Mac Apps"
+echo "  $totalzipnumber Zip files"
+echo "  $totalsregistersnumber Apple Server Registrations"
 echo 
 
 ## Load txt file, sort it and delete any duplicate URL's to get your unique URL number.
@@ -224,11 +338,10 @@ uniquezipnumber=`wc -l "${tmplocation}"/Unique_Zips.txt | awk '{print $1}'`
 
 ## Output data.
 echo $uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:
-echo $uniqueepubnumber Unique Books
-echo $uniqueipanumber Unique iOS Apps
-echo $uniquepkgnumber Unique Mac Apps
-echo $uniquezipnumber Unique Zip files
-echo
+echo "  $uniqueepubnumber Unique Books"
+echo "  $uniqueipanumber Unique iOS Apps"
+echo "  $uniquepkgnumber Unique Mac Apps"
+echo "  $uniquezipnumber Unique Zip files"
 echo
 
 
@@ -236,46 +349,82 @@ echo
 
 # Create Server alert information for managers who want MOAR DATA.
 echo $clientbw GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+echo >> "${tmplocation}"/AlertInfo.txt
 echo $requestedbw GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $applebw GB from Apple >> "${tmplocation}"/AlertInfo.txt
-echo $peerbw GB from Other Caching Servers >> "${tmplocation}"/AlertInfo.txt
+echo "  $applebw GB from Apple" >> "${tmplocation}"/AlertInfo.txt
+echo "  $peerbw GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
 echo >> "${tmplocation}"/AlertInfo.txt
 echo $totalipnumber IP Addresses hit the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $uniqueipnumber Unique IP Addresses. >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniqueipnumber Unique IP Addresses." >> "${tmplocation}"/AlertInfo.txt
 echo >> "${tmplocation}"/AlertInfo.txt
 echo A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $totalios800number iOS 8.0 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios802number iOS 8.0.2 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios810number iOS 8.1 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios811number iOS 8.1.1 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios812number iOS 8.1.2 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios813number iOS 8.1.3 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $totalios820number iOS 8.2 Devices [Currently in Beta] >> "${tmplocation}"/AlertInfo.txt
-echo $totalios830number iOS 8.3 Devices [Currently in Beta] >> "${tmplocation}"/AlertInfo.txt
-echo >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios800number iOS 8.0 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios802number iOS 8.0.2 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios810number iOS 8.1 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios811number iOS 8.1.1 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios812number iOS 8.1.2 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios813number iOS 8.1.3 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios820number iOS 8.2 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios830number iOS 8.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo  >> "${tmplocation}"/AlertInfo.txt
 echo Of these devices, here is the model breakdown: >> "${tmplocation}"/AlertInfo.txt
-echo $totalappletvnumber AppleTVs >> "${tmplocation}"/AlertInfo.txt
-echo $totaliphonenumber iPhones >> "${tmplocation}"/AlertInfo.txt
-echo $totalipadnumber iPads >> "${tmplocation}"/AlertInfo.txt
-echo $totalipodnumber iPods >> "${tmplocation}"/AlertInfo.txt
-echo >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalappletvnumber Total AppleTVs" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalappletv31 3rd Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalappletv32 4th Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totaliphonenumber Total iPhones" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone31 iPhone 4 [GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone33 iPhone 4 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone41 iPhone 4S" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone51 iPhone 5 [GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone52 iPhone 5 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone53 iPhone 5C" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone61 iPhone 5S" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone62 iPhone 5S [China Model]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone72 iPhone 6" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone71 iPhone 6 Plus" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalipadnumber Total iPads" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad21 iPad 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad22 iPad 2nd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad23 iPad 2nd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad31 iPad 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad32 iPad 3rd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad33 iPad 3rd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad34 iPad 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad35 iPad 4th Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad36 iPad 4th Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad41 iPad Air 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad42 iPad Air 1st Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad53 iPad Air 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+echo  >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad25 iPad Mini 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad26 iPad Mini 1st Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad44 iPad Mini 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad47 iPad Mini 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalipodnumber Total iPods" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipod51 iPod Touch 5th Generation" >> "${tmplocation}"/AlertInfo.txt
+echo  >> "${tmplocation}"/AlertInfo.txt
 echo A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds] >> "${tmplocation}"/AlertInfo.txt
-echo $total10102number OS X Yosemite 10.10.2 Devices >> "${tmplocation}"/AlertInfo.txt
-echo $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta] >> "${tmplocation}"/AlertInfo.txt
-echo >> "${tmplocation}"/AlertInfo.txt
+echo "  $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $total10102number OS X Yosemite 10.10.2 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo  >> "${tmplocation}"/AlertInfo.txt
 echo A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $totalepubnumber Books >> "${tmplocation}"/AlertInfo.txt
-echo $totalipanumber iOS Apps >> "${tmplocation}"/AlertInfo.txt
-echo $totalpkgnumber Mac Apps >> "${tmplocation}"/AlertInfo.txt
-echo $totalzipnumber Zip files >> "${tmplocation}"/AlertInfo.txt
-echo $totalsregistersnumber Apple Server Registrations >> "${tmplocation}"/AlertInfo.txt
-echo >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalepubnumber Books" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalipanumber iOS Apps" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalpkgnumber Mac Apps" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalzipnumber Zip files" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalsregistersnumber Apple Server Registrations" >> "${tmplocation}"/AlertInfo.txt
+echo  >> "${tmplocation}"/AlertInfo.txt
 echo $uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo $uniqueepubnumber Unique Books >> "${tmplocation}"/AlertInfo.txt
-echo $uniqueipanumber Unique iOS Apps >> "${tmplocation}"/AlertInfo.txt
-echo $uniquepkgnumber Unique Mac Apps >> "${tmplocation}"/AlertInfo.txt
-echo $uniquezipnumber Unique Zip files >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniqueepubnumber Unique Books" >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniqueipanumber Unique iOS Apps" >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniquepkgnumber Unique Mac Apps" >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniquezipnumber Unique Zip files" >> "${tmplocation}"/AlertInfo.txt
 
 # Send alert through Server.app
 finalalert=`echo | grep "" "${tmplocation}"/AlertInfo.txt`
