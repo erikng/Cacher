@@ -19,4 +19,4 @@ This script will parse through OS X Caching Debug logs and generate a Server ale
 - Total Unique Zip files
 
 # TODO
-Process info for model/version info.
+Specify exact iOS device models.
