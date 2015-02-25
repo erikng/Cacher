@@ -18,5 +18,7 @@ This script will parse through OS X Caching Debug logs and generate a Server ale
 - Total Unique Mac Apps
 - Total Unique Zip files
 
+In addition you will also get a detailed list of iOS / OS X versions and iOS models.
+
 # TODO
-Specify exact iOS device models.
+Cleanup / Whatever else I think of
