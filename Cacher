@@ -48,7 +48,8 @@ applebw=`echo $bworigin2-$bworigin1 | bc`
 peerbw=`echo $bwpeer2-$bwpeer1 | bc`
 
 ## Output data.
-if [ grep "MB" "${tmplocation}"/Bandwidth_served.txt | awk '{print $2}' == "MB" ]; then
+MB_GB=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
+if [[ "$MB_GB" == "MB" ]]; then
 	echo
 	echo $clientbw MB Bandwidth served to clients.
 	echo
@@ -358,7 +359,8 @@ echo
 # Stage VII: Server Alert
 
 # Create Server alert information for managers who want MOAR DATA.
-if [ grep "MB" "${tmplocation}"/Bandwidth_served.txt | awk '{print $2}' == "MB" ]; then
+MB_GB=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
+if [[ "$MB_GB" == "MB" ]]; then
 	echo $clientbw MB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
 	echo >> "${tmplocation}"/AlertInfo.txt
 	echo $requestedbw MB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
