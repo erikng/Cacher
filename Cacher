@@ -47,14 +47,24 @@ requestedbw=`echo $bwserver2-$bwserver1 | bc`
 applebw=`echo $bworigin2-$bworigin1 | bc`
 peerbw=`echo $bwpeer2-$bwpeer1 | bc`
 
-## Output data. Assume GB because well... If you need this script you're caching a $$$$ton of data.
-echo
-echo $clientbw GB Bandwidth served to clients.
-echo
-echo $requestedbw GB Bandwidth Requested consisting of:
-echo "  $applebw GB from Apple"
-echo "  $peerbw GB from Other Caching Servers"
-echo
+## Output data.
+if [ grep "MB" "${tmplocation}"/Bandwidth_served.txt | awk '{print $2}' == "MB" ]; then
+	echo
+	echo $clientbw MB Bandwidth served to clients.
+	echo
+	echo $requestedbw MB Bandwidth Requested consisting of:
+	echo "  $applebw MB from Apple"
+	echo "  $peerbw MB from Other Caching Servers"
+	echo
+else
+	echo
+	echo $clientbw GB Bandwidth served to clients.
+	echo
+	echo $requestedbw GB Bandwidth Requested consisting of:
+	echo "  $applebw GB from Apple"
+	echo "  $peerbw GB from Other Caching Servers"
+	echo
+fi
 
 
 # Stage III: Extract IP's from log file, output into file and remove duplicates.
@@ -348,11 +358,20 @@ echo
 # Stage VII: Server Alert
 
 # Create Server alert information for managers who want MOAR DATA.
-echo $clientbw GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
-echo >> "${tmplocation}"/AlertInfo.txt
-echo $requestedbw GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
-echo "  $applebw GB from Apple" >> "${tmplocation}"/AlertInfo.txt
-echo "  $peerbw GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+if [ grep "MB" "${tmplocation}"/Bandwidth_served.txt | awk '{print $2}' == "MB" ]; then
+	echo $clientbw MB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+	echo >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw MB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw MB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw MB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+	echo >> "${tmplocation}"/AlertInfo.txt
+else
+	echo $clientbw GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+	echo >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw GB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+fi
 echo >> "${tmplocation}"/AlertInfo.txt
 echo $totalipnumber IP Addresses hit the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniqueipnumber Unique IP Addresses." >> "${tmplocation}"/AlertInfo.txt
