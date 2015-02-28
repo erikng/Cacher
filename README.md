@@ -7,7 +7,8 @@ You can edit the file manually
 
 	<key>LogClientIdentity</key>
 	<true/>
-Or run the command: sudo serveradmin settings caching:LogClientIdentity = true
+Or run the command
+`sudo serveradmin settings caching:LogClientIdentity = true`
 
 - Total Bandwidth served to clients
 - Total Bandwidth downloaded from Apple
