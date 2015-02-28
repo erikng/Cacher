@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 02/25/2015
+## Last Modified 02/28/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -41,30 +41,57 @@ bwserver2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $6}'`
 bworigin2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $11}'`
 bwpeer2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $15}'`
 
-## Subtract the bandwidth_first from bandwidth_last to get the difference in bandwidth.
-clientbw=`echo $bwclient2-$bwclient1 | bc`
-requestedbw=`echo $bwserver2-$bwserver1 | bc`
-applebw=`echo $bworigin2-$bworigin1 | bc`
-peerbw=`echo $bwpeer2-$bwpeer1 | bc`
+## Subtract the bandwidth_last from bandwidth_first to get the difference in bandwidth.
+clientbw1=`echo $bwclient2-$bwclient1 | bc`
+requestedbw1=`echo $bwserver2-$bwserver1 | bc`
+applebw1=`echo $bworigin2-$bworigin1 | bc`
+peerbw1=`echo $bwpeer2-$bwpeer1 | bc`
+
+## Fix for smaller servers who may serve bandwidth in MB and GB in back to back days. Multiple/Divide by 1024 if needed
+#### Day before served in MB, Day of served in GB - Multiple bandwidth_last by 1024
+clientbw2=`echo $bwclient2*1024-$bwclient1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+requestedbw2=`echo $bwserver2*1024-$bwserver1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+applebw2=`echo $bworigin2*1024-$bworigin1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+peerbw2=`echo $bwpeer2*1024-$bwpeer1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+
+## Fix for smaller servers who may serve bandwidth in MB and GB in back to back days. Multiple/Divide by 1024 if needed
+#### Day before served in GB, Day of served in MB - Divide bandwidth_last by 1024
+clientbw3=`echo $bwclient2/1024-$bwclient1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+requestedbw3=`echo $bwserver2/1024-$bwserver1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+applebw3=`echo $bworigin2/1024-$bworigin1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+peerbw3=`echo $bwpeer2/1024-$bwpeer1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
 
 ## Output data.
-MB_GB=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
-if [[ "$MB_GB" == "MB" ]]; then
+### Fix for smaller servers who may serve bandwidth in MB and GB in back to back days.
+mbbf1=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
+gbbf1=`grep "GB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
+mbbf2=`grep "MB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
+gbbf2=`grep "GB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
+
+if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
+	echo $clientbw1 MB Bandwidth served to clients.
 	echo
-	echo $clientbw MB Bandwidth served to clients.
+	echo $requestedbw1 MB Bandwidth Requested consisting of:
+	echo "  $applebw1 MB from Apple"
+	echo "  $peerbw1 MB from Other Caching Servers"
+elif [[ "$gbbf1" == "GB" && "$gbbf2" == "GB" ]]; then
+	echo $clientbw1 GB Bandwidth served to clients.
 	echo
-	echo $requestedbw MB Bandwidth Requested consisting of:
-	echo "  $applebw MB from Apple"
-	echo "  $peerbw MB from Other Caching Servers"
+	echo $requestedbw1 GB Bandwidth Requested consisting of:
+	echo "  $applebw1 GB from Apple"
+	echo "  $peerbw1 GB from Other Caching Servers"
+elif [[ "$mbbf1" == "MB" && "$gbbf2" == "GB" ]]; then
+	echo $clientbw2 GB Bandwidth served to clients.
 	echo
-else
+	echo $requestedbw2  Bandwidth Requested consisting of:
+	echo "  $applebw2 GB from Apple"
+	echo "  $peerbw2 GB from Other Caching Servers"
+elif [[ "$gbbf1" == "GB" && "$mbbf2" == "MB" ]]; then
+	echo $clientbw3 GB Bandwidth served to clients.
 	echo
-	echo $clientbw GB Bandwidth served to clients.
-	echo
-	echo $requestedbw GB Bandwidth Requested consisting of:
-	echo "  $applebw GB from Apple"
-	echo "  $peerbw GB from Other Caching Servers"
-	echo
+	echo $requestedbw3 GB Bandwidth Requested consisting of:
+	echo "  $applebw3 GB from Apple"
+	echo "  $peerbw3 GB from Other Caching Servers"
 fi
 
 
@@ -271,6 +298,7 @@ echo "  $totalipodnumber Total iPods"
 echo "    $totalipod51 iPod Touch 5th Generation"
 echo 
 
+
 # Stage V: Extract OS X build number count.
 
 ## Anything containing the phrase "%Darwin" means it is OS X related. Read the merged log and output to new file
@@ -295,6 +323,7 @@ echo "  $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distingui
 echo "  $total10102number OS X Yosemite 10.10.2 Devices"
 echo "  $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]"
 echo 
+
 
 # Stage VI: Extract URL's from log file, output into file and remove duplicates.
 
@@ -359,20 +388,30 @@ echo
 # Stage VII: Server Alert
 
 # Create Server alert information for managers who want MOAR DATA.
-MB_GB=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
-if [[ "$MB_GB" == "MB" ]]; then
-	echo $clientbw MB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
+	echo $clientbw1 MB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
 	echo >> "${tmplocation}"/AlertInfo.txt
-	echo $requestedbw MB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
-	echo "  $applebw MB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "  $peerbw MB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw1 MB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw1 MB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw1 MB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$gbbf1" == "GB" && "$gbbf2" == "GB" ]]; then
+	echo $clientbw1 GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
 	echo >> "${tmplocation}"/AlertInfo.txt
-else
-	echo $clientbw GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw1 GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw1 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw1 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$mbbf1" == "MB" && "$gbbf2" == "GB" ]]; then
+	echo $clientbw2 GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
 	echo >> "${tmplocation}"/AlertInfo.txt
-	echo $requestedbw GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
-	echo "  $applebw GB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "  $peerbw GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw2  Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw2 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw2 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$gbbf1" == "GB" && "$mbbf2" == "MB" ]]; then
+	echo $clientbw3 GB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
+	echo >> "${tmplocation}"/AlertInfo.txt
+	echo $requestedbw3 GB Bandwidth Requested consisting of: >> "${tmplocation}"/AlertInfo.txt
+	echo "  $applebw3 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
+	echo "  $peerbw3 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
 fi
 echo >> "${tmplocation}"/AlertInfo.txt
 echo $totalipnumber IP Addresses hit the Caching Server yesterday consisting of: >> "${tmplocation}"/AlertInfo.txt
