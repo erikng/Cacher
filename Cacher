@@ -93,6 +93,7 @@ elif [[ "$gbbf1" == "GB" && "$mbbf2" == "MB" ]]; then
 	echo "  $applebw3 GB from Apple"
 	echo "  $peerbw3 GB from Other Caching Servers"
 fi
+echo
 
 
 # Stage III: Extract IP's from log file, output into file and remove duplicates.
