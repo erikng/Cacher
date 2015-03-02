@@ -69,6 +69,8 @@ gbbf1=`grep "GB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
 mbbf2=`grep "MB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
 gbbf2=`grep "GB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
 
+echo "Cacher has retrieved the following stats for $yesterday:" 
+echo
 if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
 	echo $clientbw1 MB Bandwidth served to clients.
 	echo
@@ -390,6 +392,8 @@ echo
 # Stage VII: Server Alert
 
 # Create Server alert information for managers who want MOAR DATA.
+echo "Cacher has retrieved the following stats for $yesterday:" >> "${tmplocation}"/AlertInfo.txt
+echo >> "${tmplocation}"/AlertInfo.txt
 if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
 	echo $clientbw1 MB Bandwidth served to clients. >> "${tmplocation}"/AlertInfo.txt
 	echo >> "${tmplocation}"/AlertInfo.txt
