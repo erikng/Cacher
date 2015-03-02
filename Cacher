@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 02/28/2015
+## Last Modified 03/02/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -20,7 +20,8 @@ cd $loglocation
 
 ## Run through each debug log, find all entries for yesterday's date and merge into a combined log.
 grep -E ^\s*"${yesterday}" ./* > "${tmplocation}"/MergedLog-"${yesterday}".log
-
+## Run through merged log, and delete all logs except downloads for proper iOS/OS X device count.
+sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Request //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
 
 # Stage II: Take Bandwidth served from log file, output into a file and calculate
 
@@ -103,7 +104,7 @@ serverip=`ifconfig en0 | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | s
 egrep --only-matching -E  ''$serverip'\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)' "${tmplocation}"/MergedLog-"${yesterday}".log > "${tmplocation}"/Total_IPs.txt
 
 ## Load txt file, sort it and delete any duplicate IP's to get your unique IP number.
-cat "${tmplocation}"/Total_IPs.txt | sort | uniq -d > "${tmplocation}"/Unique_IPs.txt
+cat "${tmplocation}"/Total_IPs.txt | sort | uniq  > "${tmplocation}"/Unique_IPs.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of IP addresses.
 totalipnumber=`wc -l "${tmplocation}"/Total_IPs.txt | awk '{print $1}'`
@@ -118,7 +119,7 @@ echo
 # Stage IV: Extract iOS Models and build number count.
 
 ## Anything containing the phrase "%iOS" means it is build number related. Read the merged log and output to new file
-egrep -o "(\s(iOS\S+))" "${tmplocation}"/MergedLog-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_iOS.txt
+egrep -o "(\s(iOS\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_iOS.txt
  
 ## Look for only "8.0" and output
 egrep --only-matching -E ''8'\.(0)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.0.txt
@@ -149,7 +150,7 @@ totalios820number=`wc -l "${tmplocation}"/iOS_8.2.txt | awk '{print $1}'`
 totalios830number=`wc -l "${tmplocation}"/iOS_8.3.txt | awk '{print $1}'`
 
 ## Anything containing the phrase "%model" means it is model type related. Read the merged log and output to new file
-egrep -o "(\s(model\S+))" "${tmplocation}"/MergedLog-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_models.txt
+egrep -o "(\s(model\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_models.txt
 
 ## Look for "TV" and output
 egrep -o "(TV)" "${tmplocation}"/Total_models.txt > "${tmplocation}"/Total_AppleTV.txt
@@ -303,7 +304,7 @@ echo
 # Stage V: Extract OS X build number count.
 
 ## Anything containing the phrase "%Darwin" means it is OS X related. Read the merged log and output to new file
-egrep -o "(\s(Darwin\S+))" "${tmplocation}"/MergedLog-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_OS_X.txt
+egrep -o "(\s(Darwin\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_OS_X.txt
 
 ## Look for "14.0.0" and output
 egrep -o "(\/(14.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.txt
@@ -360,7 +361,7 @@ echo "  $totalsregistersnumber Apple Server Registrations"
 echo 
 
 ## Load txt file, sort it and delete any duplicate URL's to get your unique URL number.
-cat "${tmplocation}"/Total_URLs.txt | sort | uniq -d > "${tmplocation}"/Unique_URLs.txt
+cat "${tmplocation}"/Total_URLs.txt | sort | uniq > "${tmplocation}"/Unique_URLs.txt
 ## Look for "epub" and output
 egrep -o "(epub)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_Books.txt
 ## Look for "ipa" and output
