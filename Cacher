@@ -257,7 +257,7 @@ echo "  $totalios810number iOS 8.1 Devices"
 echo "  $totalios811number iOS 8.1.1 Devices"
 echo "  $totalios812number iOS 8.1.2 Devices"
 echo "  $totalios813number iOS 8.1.3 Devices"
-echo "  $totalios820number iOS 8.2 Devices [Currently in Beta]"
+echo "  $totalios820number iOS 8.2 Devices"
 echo "  $totalios830number iOS 8.3 Devices [Currently in Beta]"
 echo 
 echo Of these devices, here is the model breakdown:
@@ -430,7 +430,7 @@ echo "  $totalios810number iOS 8.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios811number iOS 8.1.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios812number iOS 8.1.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios813number iOS 8.1.3 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalios820number iOS 8.2 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios820number iOS 8.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios830number iOS 8.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo  >> "${tmplocation}"/AlertInfo.txt
 echo Of these devices, here is the model breakdown: >> "${tmplocation}"/AlertInfo.txt
