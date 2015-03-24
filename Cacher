@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 03/02/2015
+## Last Modified 03/24/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -28,9 +28,16 @@ sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/publi
 ## Anything containing the phrase "start:" means it is bandwidth related. Read the merged log and output to new file.
 sed -n -e 's/^.*start: //p ' "${tmplocation}"/MergedLog-"${yesterday}".log > "${tmplocation}"/Bandwidth_served.txt
 
+## Fix for when a caching server is rebooted in the middle of a day. You will lose bandwidth served prior to reboot.
 ## UGLY! Take the first and last line from the new file, trim any parenthesis and output to new files.
-head -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_First.txt
-tail -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
+if grep -q MB "${tmplocation}"/Bandwidth_served.txt; then
+	sed -n -e '/MB/,$p' "${tmplocation}"/Bandwidth_served.txt > "${tmplocation}"/Bandwidth_served_fixed.txt
+	head -n1 < "${tmplocation}"/Bandwidth_served_fixed.txt | tr -d '()' > "${tmplocation}"/Bandwidth_First.txt
+	tail -n1 < "${tmplocation}"/Bandwidth_served_fixed.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
+else
+	head -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_First.txt
+	tail -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
+fi
 
 ## UGLY! Print out the words 1, 6, 11, and 15 because this da bandwidth.
 bwclient1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $1}'`
