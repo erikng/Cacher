@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 03/24/2015
+## Last Modified 04/08/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -265,7 +265,7 @@ echo "  $totalios811number iOS 8.1.1 Devices"
 echo "  $totalios812number iOS 8.1.2 Devices"
 echo "  $totalios813number iOS 8.1.3 Devices"
 echo "  $totalios820number iOS 8.2 Devices"
-echo "  $totalios830number iOS 8.3 Devices [Currently in Beta]"
+echo "  $totalios830number iOS 8.3 Devices"
 echo 
 echo Of these devices, here is the model breakdown:
 echo "  $totalappletvnumber Total AppleTVs"
@@ -331,7 +331,7 @@ total10103number=`wc -l "${tmplocation}"/Total_OS_X_10.10.3.txt | awk '{print $1
 echo A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:
 echo "  $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]"
 echo "  $total10102number OS X Yosemite 10.10.2 Devices"
-echo "  $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]"
+echo "  $total10103number OS X Yosemite 10.10.3 Devices"
 echo 
 
 
@@ -437,7 +437,7 @@ echo "&nbsp;&nbsp; $totalios811number iOS 8.1.1 Devices" >> "${tmplocation}"/Ale
 echo "&nbsp;&nbsp; $totalios812number iOS 8.1.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $totalios813number iOS 8.1.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $totalios820number iOS 8.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios830number iOS 8.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "&nbsp;&nbsp; $totalios830number iOS 8.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 echo "Of these devices, here is the model breakdown:" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $totalappletvnumber Total AppleTVs" >> "${tmplocation}"/AlertInfo.txt
@@ -482,7 +482,7 @@ echo  " " >> "${tmplocation}"/AlertInfo.txt
 echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $total1010number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $total10102number OS X Yosemite 10.10.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10103number OS X Yosemite 10.10.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "&nbsp;&nbsp; $total10103number OS X Yosemite 10.10.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 echo "A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "&nbsp;&nbsp; $totalepubnumber Books" >> "${tmplocation}"/AlertInfo.txt
