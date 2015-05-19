@@ -1,4 +1,5 @@
 # Cacher
+![Cacher Example](http://erikng.github.io/screenshots/Cacher_Example.png)
 This script will parse through OS X Caching Debug logs and generate a Server alert with the following information:
 
 By default, Cache 4 will not log the model and iOS version. In order to get true results from this script, add this key to 
