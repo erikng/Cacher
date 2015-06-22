@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 04/10/2015
+## Last Modified 06/22/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
