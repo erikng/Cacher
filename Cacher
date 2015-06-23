@@ -339,7 +339,7 @@ egrep -o "(\/(14.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total
 ## Look for "14.3.0" and output (10.10.3 look mah, I fixed it!)
 egrep -o "(\/(14.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.3.txt
 ## Look for "14.4.0" and output (10.10.4)
-egrep -o "(\/(14.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.4.txt
+egrep -o "(\/(14.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.4.txt
 ### OS X 10.11 El Capitan
 ## Look for "15.0.0" and output (10.11.0)
 egrep -o "(\/(15.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.0.txt
@@ -350,7 +350,7 @@ totalosxnumber=`wc -l "${tmplocation}"/Total_OS_X.txt | awk '{print $1}'`
 total10100number=`wc -l "${tmplocation}"/Total_OS_X_10.10.0_1.txt | awk '{print $1}'`
 total10102number=`wc -l "${tmplocation}"/Total_OS_X_10.10.2.txt | awk '{print $1}'`
 total10103number=`wc -l "${tmplocation}"/Total_OS_X_10.10.3.txt | awk '{print $1}'`
-total10104number=`wc -l "${tmplocation}"/Total_OS_X_10.10.3.txt | awk '{print $1}'`
+total10104number=`wc -l "${tmplocation}"/Total_OS_X_10.10.4.txt | awk '{print $1}'`
 ### OS X 10.11 El Capitan
 total10110number=`wc -l "${tmplocation}"/Total_OS_X_10.11.0.txt | awk '{print $1}'`
 
