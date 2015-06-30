@@ -11,6 +11,8 @@ You can edit the file manually
 Or run the command
 `sudo serveradmin settings caching:LogClientIdentity = true`
 
+To ensure proper logging, please restart the caching service after changing this value.
+
 - Total Bandwidth served to clients
 - Total Bandwidth downloaded from Apple
 - Total Peer Caching Servers bandwidth
