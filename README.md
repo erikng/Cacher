@@ -9,7 +9,7 @@ You can edit the file manually
 	<key>LogClientIdentity</key>
 	<true/>
 Or run the command
-`sudo serveradmin settings caching:LogClientIdentity = true`
+`sudo serveradmin settings caching:LogClientIdentity = 1`
 
 To ensure proper logging, please restart the caching service after changing this value.
 
