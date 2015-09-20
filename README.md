@@ -11,6 +11,9 @@ You can edit the file manually
 Or run the command
 `sudo serveradmin settings caching:LogClientIdentity = 1`
 
+For Server 5 and higher run the following command:
+`sudo serveradmin settings caching:LogClientIdentity = yes`
+
 To ensure proper logging, please restart the caching service after changing this value.
 
 - Total Bandwidth served to clients
