@@ -11,6 +11,7 @@ You can edit the file manually
 Or run the command
 `sudo serveradmin settings caching:LogClientIdentity = 1`
 
+## Server 5
 For Server 5 and higher run the following command:
 `sudo serveradmin settings caching:LogClientIdentity = yes`
 
