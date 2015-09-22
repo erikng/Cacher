@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 09/20/2015
+## Last Modified 09/22/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -19,7 +19,7 @@ mkdir -p $tmplocation
 ## UGLY! Change directory to log directory because of the way I'm grepping the data. 
 cd $loglocation 
 
-# Fix for Server 4.1 - Apple decided to zip all of the log files to save ~50 MB of space. :)
+# Fix for Server 4.1+ - Apple decided to zip all of the log files to save ~50 MB of space. :)
 for i in *.bz2; do 
     bzip2 -d "$i"
 done
@@ -51,72 +51,257 @@ else
 	tail -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
 fi
 
+# Dumb math section.
+# Here is where the bandwidth statistics are generated:
+# We have a few situations as of Server 5:
+# 1 - Bytes
+# 2 - Megabytes
+# 4 - Gigabytes
+# 5 - Terabytes (anything higher and I question if you're working for Apple).
+# Because bandwidth can change often, we need to account for each case. 
+# Each case consists of subtracting the last bandwidth from the first, and some will require multiplication and division.
+
 ## UGLY! Print out the words 1, 6, 11, and 15 because this da bandwidth.
+# 1 - Client Bandwidth
+# 6 - Bandwidth from Apple
+# 11 - Peer bandwidth
+# 15 - Dropped bandwidth
+# 18 - Imported bandwidth (I'm not exactly sure what this is yet. This could potentially be imported bandwidth since service started.
 bwclient1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $1}'`
-bwserver1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $6}'`
-bworigin1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $11}'`
-bwpeer1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $15}'`
 bwclient2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $1}'`
-bwserver2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $6}'`
-bworigin2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $11}'`
-bwpeer2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $15}'`
+bwapple1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $6}'`
+bwapple2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $6}'`
+bwpeer1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $11}'`
+bwpeer2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $11}'`
+bwdropped1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $15}'`
+bwdropped2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $15}'`
+bwimported1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $18}'`
+bwimported2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $18}'`
 
-## Subtract the bandwidth_last from bandwidth_first to get the difference in bandwidth.
-clientbw1=`echo $bwclient2-$bwclient1 | bc`
-requestedbw1=`echo $bwserver2-$bwserver1 | bc`
-applebw1=`echo $bworigin2-$bworigin1 | bc`
-peerbw1=`echo $bwpeer2-$bwpeer1 | bc`
 
-## Fix for smaller servers who may serve bandwidth in MB and GB in back to back days. Multiple/Divide by 1024 if needed
-#### Day before served in MB, Day of served in GB - Multiple bandwidth_last by 1024
-clientbw2=`echo $bwclient2*1024-$bwclient1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-requestedbw2=`echo $bwserver2*1024-$bwserver1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-applebw2=`echo $bworigin2*1024-$bworigin1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-peerbw2=`echo $bwpeer2*1024-$bwpeer1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+# Case 1: The Easy Case - Your server started and ended with the same type of bandwidth.
+# Examples: bytes -> bytes, Megabytes -> Megabytes, Gigabytes -> Gigabytes, Terabytes -> Terabytes.
+# Subtract the last reported bandwidth value from the first reported bandwidth value
+case1bwclient=`echo $bwclient2-$bwclient1 | bc`
+case1bwapple=`echo $bwapple2-$bwapple1 | bc`
+case1bwpeer=`echo $bwpeer2-$bwpeer1 | bc`
+case1bwdropped=`echo $bwdropped2-$bwdropped1 | bc`
+case1bwimported=`echo $bwimported2-$bwimported1 | bc`
 
-## Fix for smaller servers who may serve bandwidth in MB and GB in back to back days. Multiple/Divide by 1024 if needed
-#### Day before served in GB, Day of served in MB - Divide bandwidth_last by 1024
-clientbw3=`echo $bwclient2/1024-$bwclient1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-requestedbw3=`echo $bwserver2/1024-$bwserver1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-applebw3=`echo $bworigin2/1024-$bworigin1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
-peerbw3=`echo $bwpeer2/1024-$bwpeer1 | bc | awk '{print "scale=2;"$1"/1024"}' | bc`
+# Case 2: The Magic Mushroom Case - Your server started serving one set of bandwidth and ended with the next multiplier.
+# Examples: bytes -> Megabytes, Megabytes -> Gigabytes, Gigabytes -> Terabytes.
+# Multiply the last reported bandwidth value by 1024 and then subtract from first reported bandwidth value.
+# After generating result, divide by 1024 to maintain the final original scale.
+case2bwclient=`echo $bwclient2*1024-$bwclient1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case2bwapple=`echo $bwapple2*1024-$bwapple1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case2bwpeer=`echo $bwpeer2*1024-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case2bwdropped=`echo $bwdropped2*1024-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case2bwimported=`echo $bwimported2*1024-$bwimported1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
 
-## Output data.
-### Fix for smaller servers who may serve bandwidth in MB and GB in back to back days.
-mbbf1=`grep "MB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
-gbbf1=`grep "GB" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
-mbbf2=`grep "MB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
-gbbf2=`grep "GB" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
+# Case 3: The Shrinking Potion Case - Your server started serving one set of bandwidth and ended with the previous multiplier.
+# Examples: Terabytes -> Gigabytes, Gigabytes -> Megabytes, Megabytes -> bytes
+case3bwclient=`echo $bwclient2/1024-$bwclient1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case3bwapple=`echo $bwapple2/1024-$bwapple1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case3bwpeer=`echo $bwpeer2/1024-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case3bwdropped=`echo $bwdropped2/1024-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
+case3bwimported=`echo $bwimported2/1024-$bwimported1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
 
-echo "Cacher has retrieved the following stats for $yesterday:" 
+# Case 4: The Super Sonic Case - Your server found all the Chaos Emeralds and jumped two multipliers.
+# Examples: bytes -> Gigabytes, Megabytes -> Terabytes
+# Multiply the last reported bandwidth value by 1048576 and then subtract from first reported bandwidth value.
+# After generating result, divide by 1048576 to maintain the final original scale.
+case4bwclient=`echo $bwclient2*1048576-$bwclient1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
+case4bwapple=`echo $bwapple2*1048576-$bwapple1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
+case4bwpeer=`echo $bwpeer2*1048576-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
+case4bwdropped=`echo $bwdropped2*1048576-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
+case4bwimported=`echo $bwimported2*1048576-$bwimported1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
+
+# Case 5: The 'Please bring up more caching servers' Case - Your server miraculously jumped all multipliers.
+# Example: bytes -> Terabytes
+# Multiply the last reported bandwidth value by 1073741824 and then subtract from first reported bandwidth value.
+# After generating result, divide by 1073741824 to maintain the final original scale.
+case5bwclient=`echo $bwclient2*1073741824-$bwclient1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
+case5bwapple=`echo $bwapple2*1073741824-$bwapple1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
+case5bwpeer=`echo $bwpeer2*1073741824-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
+case5bwdropped=`echo $bwdropped2*1073741824-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
+case5bwimported=`echo $bwimported2*1073741824-$bwimported1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
+
+# Case 6: The Update/Restart Service case - You applied updates in the middle of the day.
+# My feeble brain has no fix for this at the moment. :)
+
+## Now that we have the cases/math equations, we can grep the values to determine what cases we need to run.
+# 2 - Client Bandwidth
+# 7 - Bandwidth from Apple
+# 12 - Peer bandwidth
+# 16 - Dropped bandwidth
+# 19 - Imported bandwidth (I'm not exactly sure what this is yet. This could potentially be imported bandwidth since service started.
+cbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
+cbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
+rbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $7}'`
+rbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $7}'`
+pbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $12}'`
+pbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $12}'`
+dbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $16}'`
+dbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $16}'`
+ibwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $19}'`
+ibwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $19}'`
+
+# Bandwidth served to clients
+echo "Cacher has retrieved the following stats for $yesterday:"
+echo "Cacher has retrieved the following stats for $yesterday:" >> "${tmplocation}"/AlertInfo.txt 
 echo
-if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
-	echo $clientbw1 MB Bandwidth served to clients.
-	echo
-	echo $requestedbw1 MB Bandwidth Requested consisting of:
-	echo "  $applebw1 MB from Apple"
-	echo "  $peerbw1 MB from Other Caching Servers"
-elif [[ "$gbbf1" == "GB" && "$gbbf2" == "GB" ]]; then
-	echo $clientbw1 GB Bandwidth served to clients.
-	echo
-	echo $requestedbw1 GB Bandwidth Requested consisting of:
-	echo "  $applebw1 GB from Apple"
-	echo "  $peerbw1 GB from Other Caching Servers"
-elif [[ "$mbbf1" == "MB" && "$gbbf2" == "GB" ]]; then
-	echo $clientbw2 GB Bandwidth served to clients.
-	echo
-	echo $requestedbw2  Bandwidth Requested consisting of:
-	echo "  $applebw2 GB from Apple"
-	echo "  $peerbw2 GB from Other Caching Servers"
-elif [[ "$gbbf1" == "GB" && "$mbbf2" == "MB" ]]; then
-	echo $clientbw3 GB Bandwidth served to clients.
-	echo
-	echo $requestedbw3 GB Bandwidth Requested consisting of:
-	echo "  $applebw3 GB from Apple"
-	echo "  $peerbw3 GB from Other Caching Servers"
+echo  " " >> "${tmplocation}"/AlertInfo.txt
+# Case 1
+if [[ "$cbwf" == "bytes" && "$cbwl" == "bytes" ]]; then
+	echo $case1bwclient Bytes of Bandwidth served to clients.
+	echo "$case1bwclient Bytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "MB" && "$cbwl" == "MB" ]]; then
+	echo $case1bwclient Megabytes of Bandwidth served to clients.
+	echo "$case1bwclient Megabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "GB" && "$cbwl" == "GB" ]]; then
+	echo $case1bwclient Gigabytes of Bandwidth served to clients.
+	echo "$case1bwclient Gigabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "TB" && "$cbwl" == "TB" ]]; then
+	echo $case1bwclient Terabytes of Bandwidth served to clients.
+	echo "$case1bwclient Terabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+# Case 2			
+elif [[ "$cbwf" == "bytes" && "$cbwl" == "MB" ]]; then
+	echo $case2bwclient Megabytes of Bandwidth served to clients.
+	echo "$case2bwclient Megabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "MB" && "$cbwl" == "GB" ]]; then
+	echo $case2bwclient Gigabytes of Bandwidth served to clients.
+	echo "$case2bwclient Gigabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "GB" && "$cbwl" == "TB" ]]; then
+	echo $case2bwclient Terabytes of Bandwidth served to clients.
+	echo "$case2bwclient Terabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+# Case 3
+elif [[ "$cbwf" == "MB" && "$cbwl" == "bytes" ]]; then
+	echo $case3bwclient Bytes of Bandwidth served to clients.
+	echo "$case3bwclient Bytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "GB" && "$cbwl" == "MB" ]]; then
+	echo $case3bwclient Megabytes of Bandwidth served to clients.
+	echo "$case3bwclient Megabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "TB" && "$cbwl" == "GB" ]]; then
+	echo $case3bwclient Gigabytes of Bandwidth served to clients.
+	echo "$case3bwclient Gigabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+# Case 4
+elif [[ "$cbwf" == "bytes" && "$cbwl" == "GB" ]]; then
+	echo $case4bwclient Gigabytes of Bandwidth served to clients.
+	echo "$case4bwclient Gigabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$cbwf" == "MB" && "$cbwl" == "TB" ]]; then
+	echo $case4bwclient Terabytes of Bandwidth served to clients.
+	echo "$case4bwclient Terabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+# Case 5
+elif [[ "$cbwf" == "bytes" && "$cbwl" == "TB" ]]; then
+	echo $case5bwclient Terabytes of Bandwidth served to clients.
+	echo "$case5bwclient Terabytes of Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
+else
+	echo Cacher could not determine served bandwidth. Please submit a Github issue and privately send your caching logs.
+	echo "Cacher could not determine served bandwidth. Please submit a Github issue and privately send your caching logs." >> "${tmplocation}"/AlertInfo.txt
 fi
-echo
 
+# Bandwidth requested from Apple
+# Case 1
+if [[ "$rbwf" == "bytes" && "$rbwl" == "bytes" ]]; then
+	echo "  $case1bwapple Bytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case1bwapple Bytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "MB" && "$rbwl" == "MB" ]]; then
+	echo "  $case1bwapple Megabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case1bwapple Megabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "GB" && "$rbwl" == "GB" ]]; then
+	echo "  $case1bwapple Gigabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case1bwapple Gigabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "TB" && "$rbwl" == "TB" ]]; then
+	echo "  $case1bwapple Terabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case1bwapple Terabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+# Case 2			
+elif [[ "$rbwf" == "bytes" && "$rbwl" == "MB" ]]; then
+	echo "  $case2bwapple Megabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case2bwapple Megabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "MB" && "$rbwl" == "GB" ]]; then
+	echo "  $case2bwapple Gigabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case2bwapple Gigabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "GB" && "$rbwl" == "TB" ]]; then
+	echo "  $case2bwapple Terabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case2bwapple Terabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+# Case 3
+elif [[ "$rbwf" == "MB" && "$rbwl" == "bytes" ]]; then
+	echo "  $case3bwapple Bytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case3bwapple Bytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "GB" && "$rbwl" == "MB" ]]; then
+	echo "  $case3bwapple Megabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case3bwapple Megabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "TB" && "$rbwl" == "GB" ]]; then
+	echo "  $case3bwapple Gigabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case3bwapple Gigabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+# Case 4
+elif [[ "$rbwf" == "bytes" && "$rbwl" == "GB" ]]; then
+	echo "  $case4bwapple Gigabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case4bwapple Gigabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$rbwf" == "MB" && "$rbwl" == "TB" ]]; then
+	echo "  $case4bwapple Terabytes of Bandwidth requested from Apple"
+	echo "&nbsp;&nbsp; $case4bwapple Terabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+# Case 5
+elif [[ "$rbwf" == "bytes" && "$rbwl" == "TB" ]]; then
+	echo "  $case5bwapple Terabytes of Bandwidth requested from Apple:"
+	echo "&nbsp;&nbsp; $case5bwapple Terabytes of Bandwidth requested from Apple" >> "${tmplocation}"/AlertInfo.txt
+else
+	echo "  Cacher could not determine requested bandwith. Please submit a Github issue and privately send your caching logs."
+	echo "&nbsp;&nbsp; Cacher could not determine requested bandwith. Please submit a Github issue and privately send your caching logs." >> "${tmplocation}"/AlertInfo.txt
+fi
+
+# Bandwidth requested from other Caching Servers
+# Case 1
+if [[ "$pbwf" == "bytes" && "$pbwl" == "bytes" ]]; then
+	echo "    $case1bwpeer Bytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case1bwpeer Bytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "MB" && "$pbwl" == "MB" ]]; then
+	echo "    $case1bwpeer Megabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case1bwpeer Megabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "GB" && "$pbwl" == "GB" ]]; then
+	echo "    $case1bwpeer Gigabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case1bwpeer Gigabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "TB" && "$pbwl" == "TB" ]]; then
+	echo "    $case1bwpeer Terabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case1bwpeer Terabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+# Case 2			
+elif [[ "$pbwf" == "bytes" && "$pbwl" == "MB" ]]; then
+	echo "    $case2bwpeer Megabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case2bwpeer Megabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "MB" && "$pbwl" == "GB" ]]; then
+	echo "    $case2bwpeer Gigabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case2bwpeer Gigabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "GB" && "$pbwl" == "TB" ]]; then
+	echo "    $case2bwpeer Terabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case2bwpeer Terabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+# Case 3
+elif [[ "$pbwf" == "MB" && "$pbwl" == "bytes" ]]; then
+	echo "    $case3bwpeer Bytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case3bwpeer Bytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "GB" && "$pbwl" == "MB" ]]; then
+	echo "    $case3bwpeer Megabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case3bwpeer Megabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "TB" && "$pbwl" == "GB" ]]; then
+	echo "    $case3bwpeer Gigabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case3bwpeer Gigabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+# Case 4
+elif [[ "$pbwf" == "bytes" && "$pbwl" == "GB" ]]; then
+	echo "    $case4bwpeer Gigabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case4bwpeer Gigabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+elif [[ "$pbwf" == "MB" && "$pbwl" == "TB" ]]; then
+	echo "    $case4bwpeer Terabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case4bwpeer Terabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+# Case 5
+elif [[ "$pbwf" == "bytes" && "$pbwl" == "TB" ]]; then
+	echo "    $case5bwpeer Terabytes of Bandwidth requested from other Caching Servers"
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; $case5bwpeer Terabytes of Bandwidth requested from other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
+else
+	echo "    Cacher could not determine bandwidth from other Caching Servers. Please submit a Github issue and privately send your caching logs."
+	echo "&nbsp;&nbsp;&nbsp;&nbsp; Cacher could not determine bandwidth from other Caching Servers. Please submit a Github issue and privately send your caching logs." >> "${tmplocation}"/AlertInfo.txt
+fi
+
+echo
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 # Stage III: Extract IP's from log file, output into file and remove duplicates.
 
@@ -133,8 +318,11 @@ uniqueipnumber=`wc -l "${tmplocation}"/Unique_IPs.txt | awk '{print $1}'`
 
 ## Output data.
 echo $totalipnumber IP Addresses hit the Caching Server yesterday consisting of:
+echo "$totalipnumber IP Addresses hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniqueipnumber Unique IP Addresses."
+echo "&nbsp;&nbsp; $uniqueipnumber Unique IP Addresses." >> "${tmplocation}"/AlertInfo.txt
 echo
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 
 # Stage IV: Extract iOS Models and build number count.
@@ -297,67 +485,132 @@ totalipod51=`egrep -o "(iPod5,1)" "${tmplocation}"/Total_models.txt | wc -l | aw
 totalipod71=`egrep -o "(iPod7,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 
 ## Output data.
+## Total iOS device numbers
 echo A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of:
+echo "A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios800number iOS 8.0 Devices"
+echo "&nbsp;&nbsp; $totalios800number iOS 8.0 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios802number iOS 8.0.2 Devices"
+echo "&nbsp;&nbsp; $totalios802number iOS 8.0.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios810number iOS 8.1 Devices"
+echo "&nbsp;&nbsp; $totalios810number iOS 8.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios811number iOS 8.1.1 Devices"
+echo "&nbsp;&nbsp; $totalios811number iOS 8.1.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios812number iOS 8.1.2 Devices"
+echo "&nbsp;&nbsp; $totalios812number iOS 8.1.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios813number iOS 8.1.3 Devices"
+echo "&nbsp;&nbsp; $totalios813number iOS 8.1.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios820number iOS 8.2 Devices"
+echo "&nbsp;&nbsp; $totalios820number iOS 8.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios830number iOS 8.3 Devices"
+echo "&nbsp;&nbsp; $totalios830number iOS 8.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios840number iOS 8.4 Devices"
+echo "&nbsp;&nbsp; $totalios840number iOS 8.4 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios841number iOS 8.4.1 Devices"
+echo "&nbsp;&nbsp; $totalios841number iOS 8.4.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios900number iOS 9.0 Devices"
+echo "&nbsp;&nbsp; $totalios900number iOS 9.0 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios910number iOS 9.1 Devices [Currently in Beta]"
+echo "&nbsp;&nbsp; $totalios910number iOS 9.1 Devices [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
+echo  " " >> "${tmplocation}"/AlertInfo.txt
+## iOS Model Breakdown
 echo Of these devices, here is the model breakdown:
+echo "Of these devices, here is the model breakdown:" >> "${tmplocation}"/AlertInfo.txt
+### Apple TVs
 echo "  $totalappletvnumber Total AppleTVs"
+echo "&nbsp;&nbsp; $totalappletvnumber Total AppleTVs" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalappletv31 3rd Generation Apple TVs"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv31 3rd Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalappletv32 4th Generation Apple TVs"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv32 4th Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalappletv53 5th Generation Apple TVs"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv53 5th Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
+### iPhones
 echo "  $totaliphonenumber Total iPhones"
+echo "&nbsp;&nbsp; $totaliphonenumber Total iPhones" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone31 iPhone 4 [GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone31 iPhone 4 [GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone33 iPhone 4 [CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone33 iPhone 4 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone41 iPhone 4S"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone41 iPhone 4S" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone51 iPhone 5 [GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone51 iPhone 5 [GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone52 iPhone 5 [CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone52 iPhone 5 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone53 iPhone 5C"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone53 iPhone 5C" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone61 iPhone 5S"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone61 iPhone 5S" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone62 iPhone 5S [China Model]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone62 iPhone 5S [China Model]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone72 iPhone 6"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone72 iPhone 6" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone71 iPhone 6 Plus"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone71 iPhone 6 Plus" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone81 iPhone 6S"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone81 iPhone 6S" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone82 iPhone 6S Plus"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone82 iPhone 6S Plus" >> "${tmplocation}"/AlertInfo.txt
+### iPads
 echo "  $totalipadnumber Total iPads"
+echo "&nbsp;&nbsp; $totalipadnumber Total iPads" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad21 iPad 2nd Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad21 iPad 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad22 iPad 2nd Generation [Wifi + GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad22 iPad 2nd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad23 iPad 2nd Generation [Wifi + CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad23 iPad 2nd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad31 iPad 3rd Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad31 iPad 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad32 iPad 3rd Generation [Wifi + GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad32 iPad 3rd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad33 iPad 3rd Generation [Wifi + CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad33 iPad 3rd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad34 iPad 4th Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad34 iPad 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad35 iPad 4th Generation [Wifi + GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad35 iPad 4th Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad36 iPad 4th Generation [Wifi + CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad36 iPad 4th Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad41 iPad Air 1st Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad41 iPad Air 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad42 iPad Air 1st Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad42 iPad Air 1st Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad53 iPad Air 2nd Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad53 iPad Air 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad25 iPad Mini 1st Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad25 iPad Mini 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad26 iPad Mini 1st Generation [Wifi + GSM]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad26 iPad Mini 1st Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad44 iPad Mini 2nd Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad44 iPad Mini 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad47 iPad Mini 3rd Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad47 iPad Mini 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad51 iPad Mini 4th Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad51 iPad Mini 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+### iPods
 echo "  $totalipodnumber Total iPods"
+echo "&nbsp;&nbsp; $totalipodnumber Total iPods" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipod51 iPod Touch 5th Generation"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipod51 iPod Touch 5th Generation" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipod71 iPod Touch 6th Generation"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipod71 iPod Touch 6th Generation" >> "${tmplocation}"/AlertInfo.txt
 echo 
-
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 # Stage V: Extract OS X build number count.
 
@@ -392,14 +645,21 @@ total10110number=`wc -l "${tmplocation}"/Total_OS_X_10.11.0.txt | awk '{print $1
 
 ## Output Darwin data.
 echo A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:
+echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10100number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]"
+echo "&nbsp;&nbsp; $total10100number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10102number OS X Yosemite 10.10.2 Devices"
+echo "&nbsp;&nbsp; $total10102number OS X Yosemite 10.10.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10103number OS X Yosemite 10.10.3 Devices"
+echo "&nbsp;&nbsp; $total10103number OS X Yosemite 10.10.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10104number OS X Yosemite 10.10.4 Devices"
+echo "&nbsp;&nbsp; $total10104number OS X Yosemite 10.10.4 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10105number OS X Yosemite 10.10.5 Devices"
+echo "&nbsp;&nbsp; $total10105number OS X Yosemite 10.10.5 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10110number OS X El Capitan 10.11.0 Devices [Currently In Beta]"
+echo "&nbsp;&nbsp; $total10110number OS X El Capitan 10.11.0 Devices [Currently In Beta] " >> "${tmplocation}"/AlertInfo.txt
 echo 
-
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 # Stage VI: Extract URL's from log file, output into file and remove duplicates.
 
@@ -427,12 +687,19 @@ totalsregistersnumber=`wc -l "${tmplocation}"/Total_Server_Registers.txt | awk '
 
 ## Output data.
 echo A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:
+echo "A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalepubnumber Books"
+echo "&nbsp;&nbsp; $totalepubnumber Books" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalipanumber iOS Apps"
+echo "&nbsp;&nbsp; $totalipanumber iOS Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalpkgnumber Mac Apps"
+echo "&nbsp;&nbsp; $totalpkgnumber Mac Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalzipnumber Zip files"
+echo "&nbsp;&nbsp; $totalzipnumber Zip files" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalsregistersnumber Apple Server Registrations"
+echo "&nbsp;&nbsp; $totalsregistersnumber Apple Server Registrations" >> "${tmplocation}"/AlertInfo.txt
 echo 
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 ## Load txt file, sort it and delete any duplicate URL's to get your unique URL number.
 cat "${tmplocation}"/Total_URLs.txt | sort | uniq > "${tmplocation}"/Unique_URLs.txt
@@ -454,130 +721,20 @@ uniquezipnumber=`wc -l "${tmplocation}"/Unique_Zips.txt | awk '{print $1}'`
 
 ## Output data.
 echo $uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:
+echo "$uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniqueepubnumber Unique Books"
+echo "&nbsp;&nbsp; $uniqueepubnumber Unique Books" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniqueipanumber Unique iOS Apps"
+echo "&nbsp;&nbsp; $uniqueipanumber Unique iOS Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniquepkgnumber Unique Mac Apps"
+echo "&nbsp;&nbsp; $uniquepkgnumber Unique Mac Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniquezipnumber Unique Zip files"
+echo "&nbsp;&nbsp; $uniquezipnumber Unique Zip files" >> "${tmplocation}"/AlertInfo.txt
 echo
-
+echo  " " >> "${tmplocation}"/AlertInfo.txt
 
 # Stage VII: Server Alert
-
-# Create Server alert information for managers who want MOAR DATA.
-echo "Cacher has retrieved the following stats for $yesterday:" >> "${tmplocation}"/AlertInfo.txt
-# echo >> "${tmplocation}"/AlertInfo.txt
-if [[ "$mbbf1" == "MB" && "$mbbf2" == "MB" ]]; then
-	echo "$clientbw1 MB Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
-	echo " " >> "${tmplocation}"/AlertInfo.txt
-	echo "$requestedbw1 MB Bandwidth Requested consisting of:" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $applebw1 MB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $peerbw1 MB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
-elif [[ "$gbbf1" == "GB" && "$gbbf2" == "GB" ]]; then
-	echo "$clientbw1 GB Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
-	echo " " >> "${tmplocation}"/AlertInfo.txt
-	echo "$requestedbw1 GB Bandwidth Requested consisting of:" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $applebw1 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $peerbw1 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
-elif [[ "$mbbf1" == "MB" && "$gbbf2" == "GB" ]]; then
-	echo "$clientbw2 GB Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
-	echo " " >> "${tmplocation}"/AlertInfo.txt
-	echo "$requestedbw2  Bandwidth Requested consisting of:" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $applebw2 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $peerbw2 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
-elif [[ "$gbbf1" == "GB" && "$mbbf2" == "MB" ]]; then
-	echo "$clientbw3 GB Bandwidth served to clients." >> "${tmplocation}"/AlertInfo.txt
-	echo " " >> "${tmplocation}"/AlertInfo.txt
-	echo "$requestedbw3 GB Bandwidth Requested consisting of:" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $applebw3 GB from Apple" >> "${tmplocation}"/AlertInfo.txt
-	echo "&nbsp;&nbsp; $peerbw3 GB from Other Caching Servers" >> "${tmplocation}"/AlertInfo.txt
-fi
-echo " " >> "${tmplocation}"/AlertInfo.txt
-echo "$totalipnumber IP Addresses hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $uniqueipnumber Unique IP Addresses." >> "${tmplocation}"/AlertInfo.txt
-echo " " >> "${tmplocation}"/AlertInfo.txt
-echo "A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios800number iOS 8.0 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios802number iOS 8.0.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios810number iOS 8.1 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios811number iOS 8.1.1 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios812number iOS 8.1.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios813number iOS 8.1.3 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios820number iOS 8.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios830number iOS 8.3 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios840number iOS 8.4 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios841number iOS 8.4.1 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios900number iOS 9.0 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalios910number iOS 9.1 Devices [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
-echo  " " >> "${tmplocation}"/AlertInfo.txt
-echo "Of these devices, here is the model breakdown:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalappletvnumber Total AppleTVs" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv31 3rd Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv32 4th Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalappletv53 5th Generation Apple TVs" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totaliphonenumber Total iPhones" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone31 iPhone 4 [GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone33 iPhone 4 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone41 iPhone 4S" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone51 iPhone 5 [GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone52 iPhone 5 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone53 iPhone 5C" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone61 iPhone 5S" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone62 iPhone 5S [China Model]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone72 iPhone 6" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone71 iPhone 6 Plus" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone81 iPhone 6S" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone82 iPhone 6S Plus" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalipadnumber Total iPads" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad21 iPad 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad22 iPad 2nd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad23 iPad 2nd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad31 iPad 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad32 iPad 3rd Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad33 iPad 3rd Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad34 iPad 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad35 iPad 4th Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad36 iPad 4th Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad41 iPad Air 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad42 iPad Air 1st Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad53 iPad Air 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad25 iPad Mini 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad26 iPad Mini 1st Generation [Wifi + GSM]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad44 iPad Mini 2nd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad47 iPad Mini 3rd Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad51 iPad Mini 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalipodnumber Total iPods" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipod51 iPod Touch 5th Generation" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipod71 iPod Touch 6th Generation" >> "${tmplocation}"/AlertInfo.txt
-echo  " " >> "${tmplocation}"/AlertInfo.txt
-echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10100number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10102number OS X Yosemite 10.10.2 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10103number OS X Yosemite 10.10.3 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10104number OS X Yosemite 10.10.4 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10105number OS X Yosemite 10.10.5 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $total10110number OS X El Capitan 10.11.0 Devices [Currently In Beta] " >> "${tmplocation}"/AlertInfo.txt
-echo  " " >> "${tmplocation}"/AlertInfo.txt
-echo "A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalepubnumber Books" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalipanumber iOS Apps" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalpkgnumber Mac Apps" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalzipnumber Zip files" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $totalsregistersnumber Apple Server Registrations" >> "${tmplocation}"/AlertInfo.txt
-echo  " " >> "${tmplocation}"/AlertInfo.txt
-echo "$uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $uniqueepubnumber Unique Books" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $uniqueipanumber Unique iOS Apps" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $uniquepkgnumber Unique Mac Apps" >> "${tmplocation}"/AlertInfo.txt
-echo "&nbsp;&nbsp; $uniquezipnumber Unique Zip files" >> "${tmplocation}"/AlertInfo.txt
-
 # iconv -f US-ASCII -t UTF-8 "${tmplocation}"/AlertInfo.txt > "${tmplocation}"/AlertInfoUTF.txt
-
 # Send alert through Server.app
 finalalert=`echo | grep "" "${tmplocation}"/AlertInfo.txt`
 /Applications/Server.app/Contents/ServerRoot/usr/sbin/server postAlert CustomAlert Common subject "Caching Server Data: $yesterday" message "$finalalert" <<<""
