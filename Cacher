@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 09/22/2015
+## Last Modified 10/19/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -354,6 +354,10 @@ egrep -o "(8.4.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.4.1.t
 ### iOS 9
 ## Look for only "9.0" and output
 egrep --only-matching -E ''9'\.(0)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.txt
+## Look for "9.0.1" and output
+egrep -o "(9.0.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.1.txt
+## Look for "9.0.2" and output
+egrep -o "(9.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.2.txt
 ## Look for only "9.1" and output
 egrep --only-matching -E ''9'\.(1)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.1.txt
 
@@ -372,6 +376,8 @@ totalios840number=`wc -l "${tmplocation}"/iOS_8.4.txt | awk '{print $1}'`
 totalios841number=`wc -l "${tmplocation}"/iOS_8.4.1.txt | awk '{print $1}'`
 ### iOS 9
 totalios900number=`wc -l "${tmplocation}"/iOS_9.0.txt | awk '{print $1}'`
+totalios901number=`wc -l "${tmplocation}"/iOS_9.0.1.txt | awk '{print $1}'`
+totalios902number=`wc -l "${tmplocation}"/iOS_9.0.2.txt | awk '{print $1}'`
 totalios910number=`wc -l "${tmplocation}"/iOS_9.1.txt | awk '{print $1}'`
 
 ## Anything containing the phrase "%model" means it is model type related. Read the merged log and output to new file
@@ -510,6 +516,10 @@ echo "  $totalios841number iOS 8.4.1 Devices"
 echo "&nbsp;&nbsp; $totalios841number iOS 8.4.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios900number iOS 9.0 Devices"
 echo "&nbsp;&nbsp; $totalios900number iOS 9.0 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios901number iOS 9.0.1 Devices"
+echo "&nbsp;&nbsp; $totalios901number iOS 9.0.1 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios902number iOS 9.0.2 Devices"
+echo "&nbsp;&nbsp; $totalios902number iOS 9.0.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios910number iOS 9.1 Devices [Currently in Beta]"
 echo "&nbsp;&nbsp; $totalios910number iOS 9.1 Devices [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
