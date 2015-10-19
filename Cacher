@@ -30,7 +30,8 @@ grep -E ^\s*"${yesterday}" ./* > "${tmplocation}"/MergedLog-"${yesterday}".log
 if [[ "$serverversion" == *5* ]]
 ## Run through merged log, and delete all logs except downloads for proper iOS/OS X device count.
 	then
-		sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Received //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
+		# sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Received //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
+		sed -n -e  's/^.*Received //p' "${tmplocation}"/MergedLog-"${yesterday}".log | sed -n -e  's/^.*from //p' | sort > "${tmplocation}"/URL_Log-"${yesterday}".log
 	else
 		sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Request //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
 fi
@@ -671,8 +672,32 @@ echo "&nbsp;&nbsp; $total10110number OS X El Capitan 10.11.0 Devices [Currently 
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
-# Stage VI: Extract URL's from log file, output into file and remove duplicates.
+# Stage VI: Apple Configurator 2
+## Anything containing the phrase "%Configurator" means it is Configurator 2 related. Read the merged log and output to new file
+egrep -o "(.(Configurator\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_AC2.txt
 
+## Look for "2.0" and output
+egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0.txt
+## Look for "2.1" and output
+egrep -o "(\/(2.1))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.1.txt
+
+## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
+totalacnumber=`wc -l "${tmplocation}"/Total_AC2.txt | awk '{print $1}'`
+### OS X 10.10 Yosemite
+totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
+totalac201number=`wc -l "${tmplocation}"/Total_AC_2.1.txt | awk '{print $1}'`
+
+## Output Darwin data.
+echo A total of $totalacnumber Apple Configurator devices hit the Caching Server yesterday consisting of:
+echo "A total of $totalacnumber Apple Configurator devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac200number Apple Configurator 2.0 Devices"
+echo "&nbsp;&nbsp; $totalac200number Apple Configurator 2.0 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac201number Apple Configurator 2.1 Devices [Currently In Beta]"
+echo "&nbsp;&nbsp; $totalac201number Apple Configurator 2.1 Devices [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo 
+echo  " " >> "${tmplocation}"/AlertInfo.txt
+
+# Stage VII: Extract URL's from log file, output into file and remove duplicates.
 ## Anything containing the phrase " http" means it is download related. Read the merged log and output to new file
 egrep -o "(\s(http\S+))" "${tmplocation}"/MergedLog-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_URLs.txt
 
@@ -743,12 +768,11 @@ echo "&nbsp;&nbsp; $uniquezipnumber Unique Zip files" >> "${tmplocation}"/AlertI
 echo
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
-# Stage VII: Server Alert
+# Stage IX: Server Alert
 # iconv -f US-ASCII -t UTF-8 "${tmplocation}"/AlertInfo.txt > "${tmplocation}"/AlertInfoUTF.txt
 # Send alert through Server.app
 finalalert=`echo | grep "" "${tmplocation}"/AlertInfo.txt`
 /Applications/Server.app/Contents/ServerRoot/usr/sbin/server postAlert CustomAlert Common subject "Caching Server Data: $yesterday" message "$finalalert" <<<""
 
-
-# Stage VII: Delete tmp files (the easy part!)
+# Stage X: Delete tmp files (the easy part!)
 rm -rf $tmplocation
