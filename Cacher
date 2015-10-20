@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 10/19/2015
+## Last Modified 10/20/2015
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -688,12 +688,12 @@ totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
 totalac201number=`wc -l "${tmplocation}"/Total_AC_2.1.txt | awk '{print $1}'`
 
 ## Output Darwin data.
-echo A total of $totalacnumber Apple Configurator devices hit the Caching Server yesterday consisting of:
-echo "A total of $totalacnumber Apple Configurator devices hit the Caching Server yesterday consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalac200number Apple Configurator 2.0 Devices"
-echo "&nbsp;&nbsp; $totalac200number Apple Configurator 2.0 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalac201number Apple Configurator 2.1 Devices [Currently In Beta]"
-echo "&nbsp;&nbsp; $totalac201number Apple Configurator 2.1 Devices [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo A total of $totalacnumber applications were downloaded from Apple Configurator 2 devices, consisting of:
+echo "A total of $totalacnumber applications were downloaded from Apple Configurator 2 devices, consisting of:" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac200number applications downloaded from Apple Configurator 2.0"
+echo "&nbsp;&nbsp; $totalac200number applications downloaded from Apple Configurator 2.0" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac201number applications downloaded from Apple Configurator 2.1 [Currently In Beta]"
+echo "&nbsp;&nbsp; $totalac201number applications downloaded from Apple Configurator 2.1 [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
