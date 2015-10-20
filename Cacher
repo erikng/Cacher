@@ -688,12 +688,12 @@ totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
 totalac201number=`wc -l "${tmplocation}"/Total_AC_2.1.txt | awk '{print $1}'`
 
 ## Output Darwin data.
-echo A total of $totalacnumber applications were downloaded from Apple Configurator 2 devices, consisting of:
-echo "A total of $totalacnumber applications were downloaded from Apple Configurator 2 devices, consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalac200number applications downloaded from Apple Configurator 2.0"
-echo "&nbsp;&nbsp; $totalac200number applications downloaded from Apple Configurator 2.0" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalac201number applications downloaded from Apple Configurator 2.1 [Currently In Beta]"
-echo "&nbsp;&nbsp; $totalac201number applications downloaded from Apple Configurator 2.1 [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:
+echo "A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac200number Applications downloaded from Apple Configurator 2.0"
+echo "&nbsp;&nbsp; $totalac200number Applications downloaded from Apple Configurator 2.0" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac201number Applications downloaded from Apple Configurator 2.1 [Currently In Beta]"
+echo "&nbsp;&nbsp; $totalac201number Applications downloaded from Apple Configurator 2.1 [Currently In Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
