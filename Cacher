@@ -671,8 +671,8 @@ echo "&nbsp;&nbsp; $total10104number OS X Yosemite 10.10.4 Devices" >> "${tmploc
 echo "  $total10105number OS X Yosemite 10.10.5 Devices"
 echo "&nbsp;&nbsp; $total10105number OS X Yosemite 10.10.5 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10110number OS X El Capitan 10.11.0 Devices"
-echo "&nbsp;&nbsp; $total10111number OS X El Capitan 10.11.1 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $total10110number OS X El Capitan 10.11.0 Devices"
+echo "&nbsp;&nbsp; $total10110number OS X El Capitan 10.11.0 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $total10111number OS X El Capitan 10.11.1 Devices"
 echo "&nbsp;&nbsp; $total10111number OS X El Capitan 10.11.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
