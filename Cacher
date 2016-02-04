@@ -724,9 +724,7 @@ echo  " " >> "${tmplocation}"/AlertInfo.txt
 egrep -o "(.(Configurator\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_AC2.txt
 
 ## Look for "2.0" and output
-egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0.txt
-## Look for "2.1" and output
-egrep -o "(\/(2.1))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.1.txt
+egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0_1.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 totalacnumber=`wc -l "${tmplocation}"/Total_AC2.txt | awk '{print $1}'`
