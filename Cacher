@@ -545,8 +545,8 @@ echo "  $totalios920number iOS 9.2 Devices"
 echo "&nbsp;&nbsp; $totalios920number iOS 9.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios921number iOS 9.2.1 Devices"
 echo "&nbsp;&nbsp; $totalios921number iOS 9.2.1 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalios930number iOS 9.3 Devices [Currently in Beta]"
-echo "&nbsp;&nbsp; $totalios930number iOS 9.3 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios930number iOS 9.3 Devices"
+echo "&nbsp;&nbsp; $totalios930number iOS 9.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 ## iOS Model Breakdown
@@ -641,10 +641,10 @@ echo "    $totalipad51 iPad Mini 4th Generation [Wifi]"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad51 iPad Mini 4th Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad67 iPad Pro 1st Generation [Wifi]"
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad67 iPad Pro 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad68 iPad Pro 1st Generation [Wifi + Cellular]"
-echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad68 iPad Pro 1st Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad67 iPad Pro 12.9 Inch 1st Generation [Wifi]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad67 iPad Pro 12.9 Inch 1st Generation [Wifi]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad68 iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totalipad68 iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]" >> "${tmplocation}"/AlertInfo.txt
 ### iPods
 echo "  $totalipodnumber Total iPods"
 echo "&nbsp;&nbsp; $totalipodnumber Total iPods" >> "${tmplocation}"/AlertInfo.txt
