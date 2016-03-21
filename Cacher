@@ -420,16 +420,20 @@ totalappletv53=`egrep -o "(AppleTV5,3)" "${tmplocation}"/Total_models.txt | wc -
 ## Device Identifiers iPhone (Only 3,1 and higher can run iOS 8)
 ## Look for "iPhone3,1" and output
 totaliphone31=`egrep -o "(iPhone3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone3,2" and output
+totaliphone32=`egrep -o "(iPhone3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone3,3" and output
 totaliphone33=`egrep -o "(iPhone3,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone4,1" and output
 totaliphone41=`egrep -o "(iPhone4,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone5,1" and output
 totaliphone51=`egrep -o "(iPhone5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone5,1" and output
+## Look for "iPhone5,2" and output
 totaliphone52=`egrep -o "(iPhone5,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone5,3" and output
 totaliphone53=`egrep -o "(iPhone5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone5,4" and output
+totaliphone54=`egrep -o "(iPhone5,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone6,1" and output
 totaliphone61=`egrep -o "(iPhone6,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone6,2" and output
@@ -442,6 +446,8 @@ totaliphone71=`egrep -o "(iPhone7,1)" "${tmplocation}"/Total_models.txt | wc -l 
 totaliphone81=`egrep -o "(iPhone8,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPhone8,2" and output
 totaliphone82=`egrep -o "(iPhone8,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPhone8,4" and output
+totaliphone84=`egrep -o "(iPhone8,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 
 ## Device Identifiers iPad (Only 2,1 and higher can run iOS 8)
 ## Look for "iPad2,1" and output
@@ -570,6 +576,8 @@ echo "  $totaliphonenumber Total iPhones"
 echo "&nbsp;&nbsp; $totaliphonenumber Total iPhones" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone31 iPhone 4 [GSM]"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone31 iPhone 4 [GSM]" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone32 iPhone 4 [GSM 2012]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone32 iPhone 4 [GSM 2012]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone33 iPhone 4 [CDMA]"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone33 iPhone 4 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone41 iPhone 4S"
@@ -580,6 +588,8 @@ echo "    $totaliphone52 iPhone 5 [CDMA]"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone52 iPhone 5 [CDMA]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone53 iPhone 5C"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone53 iPhone 5C" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone54 iPhone 5C [Global]"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone54 iPhone 5C [Global]" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone61 iPhone 5S"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone61 iPhone 5S" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone62 iPhone 5S [China Model]"
@@ -592,6 +602,8 @@ echo "    $totaliphone81 iPhone 6S"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone81 iPhone 6S" >> "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone82 iPhone 6S Plus"
 echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone82 iPhone 6S Plus" >> "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone84 iPhone SE"
+echo "&nbsp;&nbsp;&nbsp;&nbsp; $totaliphone84 iPhone SE" >> "${tmplocation}"/AlertInfo.txt
 ### iPads
 echo "  $totalipadnumber Total iPads"
 echo "&nbsp;&nbsp; $totalipadnumber Total iPads" >> "${tmplocation}"/AlertInfo.txt
