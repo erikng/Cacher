@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 03/21/2016
+## Last Modified 03/22/2016
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -734,8 +734,8 @@ echo "  $total10112number OS X El Capitan 10.11.2 Devices"
 echo "&nbsp;&nbsp; $total10112number OS X El Capitan 10.11.2 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10113number OS X El Capitan 10.11.3 Devices"
 echo "&nbsp;&nbsp; $total10113number OS X El Capitan 10.11.3 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $total10114number OS X El Capitan 10.11.4 Devices [Currently in Beta]"
-echo "&nbsp;&nbsp; $total10114number OS X El Capitan 10.11.4 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $total10114number OS X El Capitan 10.11.4 Devices"
+echo "&nbsp;&nbsp; $total10114number OS X El Capitan 10.11.4 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
