@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 03/22/2016
+## Last Modified 04/13/2016
 
 ## Variables
 loglocation=/Library/Server/Caching/Logs
@@ -367,6 +367,10 @@ egrep --only-matching -E ''9'\.(2)$' "${tmplocation}"/Total_iOS.txt > "${tmploca
 egrep -o "(9.2.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.2.1.txt
 ## Look for only "9.3" and output
 egrep --only-matching -E ''9'\.(3)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.txt
+## Look for only "9.3.1" and output
+egrep -o "(9.3.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.1.txt
+## Look for only "9.3.2" and output
+egrep -o "(9.3.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.2.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 ### iOS 8
@@ -389,6 +393,8 @@ totalios910number=`wc -l "${tmplocation}"/iOS_9.1.txt | awk '{print $1}'`
 totalios920number=`wc -l "${tmplocation}"/iOS_9.2.txt | awk '{print $1}'`
 totalios921number=`wc -l "${tmplocation}"/iOS_9.2.1.txt | awk '{print $1}'`
 totalios930number=`wc -l "${tmplocation}"/iOS_9.3.txt | awk '{print $1}'`
+totalios931number=`wc -l "${tmplocation}"/iOS_9.3.1.txt | awk '{print $1}'`
+totalios932number=`wc -l "${tmplocation}"/iOS_9.3.2.txt | awk '{print $1}'`
 
 ## Anything containing the phrase "%model" means it is model type related. Read the merged log and output to new file
 egrep -o "(\s(model\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_models.txt
@@ -557,6 +563,10 @@ echo "  $totalios921number iOS 9.2.1 Devices"
 echo "&nbsp;&nbsp; $totalios921number iOS 9.2.1 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalios930number iOS 9.3 Devices"
 echo "&nbsp;&nbsp; $totalios930number iOS 9.3 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios931number iOS 9.3.1 Devices"
+echo "&nbsp;&nbsp; $totalios931number iOS 9.3.1 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalios932number iOS 9.3.2 Devices [Currently in Beta]"
+echo "&nbsp;&nbsp; $totalios932number iOS 9.3.2 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 ## iOS Model Breakdown
@@ -700,6 +710,8 @@ egrep -o "(\/(15.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total
 egrep -o "(\/(15.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.3.txt
 ## Look for "15.4.0" and output (10.11.4)
 egrep -o "(\/(15.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.4.txt
+## Look for "15.5.0" and output (10.11.5)
+egrep -o "(\/(15.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.5.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 totalosxnumber=`wc -l "${tmplocation}"/Total_OS_X.txt | awk '{print $1}'`
@@ -714,6 +726,7 @@ total10110number=`wc -l "${tmplocation}"/Total_OS_X_10.11.0_1.txt | awk '{print 
 total10112number=`wc -l "${tmplocation}"/Total_OS_X_10.11.2.txt | awk '{print $1}'`
 total10113number=`wc -l "${tmplocation}"/Total_OS_X_10.11.3.txt | awk '{print $1}'`
 total10114number=`wc -l "${tmplocation}"/Total_OS_X_10.11.4.txt | awk '{print $1}'`
+total10115number=`wc -l "${tmplocation}"/Total_OS_X_10.11.5.txt | awk '{print $1}'`
 
 ## Output Darwin data.
 echo A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:
@@ -736,6 +749,8 @@ echo "  $total10113number OS X El Capitan 10.11.3 Devices"
 echo "&nbsp;&nbsp; $total10113number OS X El Capitan 10.11.3 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10114number OS X El Capitan 10.11.4 Devices"
 echo "&nbsp;&nbsp; $total10114number OS X El Capitan 10.11.4 Devices" >> "${tmplocation}"/AlertInfo.txt
+echo "  $total10115number OS X El Capitan 10.11.5 Devices [Currently in Beta]"
+echo "&nbsp;&nbsp; $total10115number OS X El Capitan 10.11.5 Devices [Currently in Beta]" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
@@ -744,19 +759,19 @@ echo  " " >> "${tmplocation}"/AlertInfo.txt
 egrep -o "(.(Configurator\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_AC2.txt
 
 ## Look for "2.0" and output
-egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0_1.txt
+egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 totalacnumber=`wc -l "${tmplocation}"/Total_AC2.txt | awk '{print $1}'`
-### OS X 10.10 Yosemite
-totalac2001number=`wc -l "${tmplocation}"/Total_AC_2.0_1.txt | awk '{print $1}'`
+### Apple Configurator 2, 2.1, 2.2 and 2.2.1
+totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
 
 
 ## Output Darwin data.
 echo A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:
 echo "A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:" >> "${tmplocation}"/AlertInfo.txt
-echo "  $totalac2001number Applications downloaded from Apple Configurator 2.0/2.1 [Cannot distinguish between builds]"
-echo "&nbsp;&nbsp; $totalac2001number Applications downloaded from Apple Configurator 2.0/2.1 [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalac200number Applications downloaded from Apple Configurator 2.0/2.1/2.2 [Cannot distinguish between builds]"
+echo "&nbsp;&nbsp; $totalac200number Applications downloaded from Apple Configurator 2.0/2.1/2.2 [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
@@ -772,6 +787,8 @@ egrep -o "(zip)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Zips.t
 egrep -o "(pkg)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_PKGs.txt
 ## Look for "epub" and output
 egrep -o "(epub)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Books.txt
+## Look for "ipsw" and output
+egrep -o "(ipsw)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_IPSWs.txt
 ## Look for "register" and output
 egrep -o "(register)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Server_Registers.txt
 
@@ -780,6 +797,7 @@ totalurlnumber=`wc -l "${tmplocation}"/Total_URLs.txt | awk '{print $1}'`
 totalipanumber=`wc -l "${tmplocation}"/Total_IPAs.txt | awk '{print $1}'`
 totalzipnumber=`wc -l "${tmplocation}"/Total_Zips.txt | awk '{print $1}'`
 totalpkgnumber=`wc -l "${tmplocation}"/Total_PKGs.txt | awk '{print $1}'`
+totalipswnumber=`wc -l "${tmplocation}"/Total_IPSWs.txt | awk '{print $1}'`
 totalepubnumber=`wc -l "${tmplocation}"/Total_Books.txt | awk '{print $1}'`
 totalsregistersnumber=`wc -l "${tmplocation}"/Total_Server_Registers.txt | awk '{print $1}'`
 
@@ -794,6 +812,8 @@ echo "  $totalpkgnumber Mac Apps"
 echo "&nbsp;&nbsp; $totalpkgnumber Mac Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalzipnumber Zip files"
 echo "&nbsp;&nbsp; $totalzipnumber Zip files" >> "${tmplocation}"/AlertInfo.txt
+echo "  $totalipswnumber IPSW files"
+echo "&nbsp;&nbsp; $totalipswnumber IPSW files" >> "${tmplocation}"/AlertInfo.txt
 echo "  $totalsregistersnumber Apple Server Registrations"
 echo "&nbsp;&nbsp; $totalsregistersnumber Apple Server Registrations" >> "${tmplocation}"/AlertInfo.txt
 echo 
@@ -809,6 +829,8 @@ egrep -o "(ipa)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_IPAs
 egrep -o "(pkg)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_PKGs.txt
 ## Look for "zip" and output
 egrep -o "(zip)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_Zips.txt
+## Look for "ipsw" and output
+egrep -o "(ipsw)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_IPSWs.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total unique numbers.
 uniqueurlnumber=`wc -l "${tmplocation}"/Unique_URLs.txt | awk '{print $1}'`
@@ -816,6 +838,7 @@ uniqueepubnumber=`wc -l "${tmplocation}"/Unique_Books.txt | awk '{print $1}'`
 uniqueipanumber=`wc -l "${tmplocation}"/Unique_IPAs.txt | awk '{print $1}'`
 uniquepkgnumber=`wc -l "${tmplocation}"/Unique_PKGs.txt | awk '{print $1}'`
 uniquezipnumber=`wc -l "${tmplocation}"/Unique_Zips.txt | awk '{print $1}'`
+uniqueipswnumber=`wc -l "${tmplocation}"/Unique_IPSWs.txt | awk '{print $1}'`
 
 ## Output data.
 echo $uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:
@@ -828,6 +851,8 @@ echo "  $uniquepkgnumber Unique Mac Apps"
 echo "&nbsp;&nbsp; $uniquepkgnumber Unique Mac Apps" >> "${tmplocation}"/AlertInfo.txt
 echo "  $uniquezipnumber Unique Zip files"
 echo "&nbsp;&nbsp; $uniquezipnumber Unique Zip files" >> "${tmplocation}"/AlertInfo.txt
+echo "  $uniqueipswnumber Unique IPSW files"
+echo "&nbsp;&nbsp; $uniqueipswnumber Unique IPSW files" >> "${tmplocation}"/AlertInfo.txt
 echo
 echo  " " >> "${tmplocation}"/AlertInfo.txt
 
