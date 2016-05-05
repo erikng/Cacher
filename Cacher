@@ -741,7 +741,7 @@ echo "  $total10104number OS X Yosemite 10.10.4 Devices"
 echo "&nbsp;&nbsp; $total10104number OS X Yosemite 10.10.4 Devices" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10105number OS X Yosemite 10.10.5 Devices"
 echo "&nbsp;&nbsp; $total10105number OS X Yosemite 10.10.5 Devices" >> "${tmplocation}"/AlertInfo.txt
-echo "  $total10110number OS X El Capitan 10.11.0/10.101.1 Devices [Cannot distinguish between builds]"
+echo "  $total10110number OS X El Capitan 10.11.0/10.11.1 Devices [Cannot distinguish between builds]"
 echo "&nbsp;&nbsp; $total10110number OS X El Capitan 10.11.0/10.11.1 Devices [Cannot distinguish between builds]" >> "${tmplocation}"/AlertInfo.txt
 echo "  $total10112number OS X El Capitan 10.11.2 Devices"
 echo "&nbsp;&nbsp; $total10112number OS X El Capitan 10.11.2 Devices" >> "${tmplocation}"/AlertInfo.txt
