@@ -6,6 +6,8 @@
 ## Last Modified 05/16/2016
 
 ## Variables
+uptime=`uptime | sed 's/.*up \([^,]*\), .*/\1/'`
+datasinceboot=`cat /Library/Server/Caching/Logs/Debug.log | grep returned | tail -1`
 loglocation=/Library/Server/Caching/Logs
 tmplocation=/tmp/CacheLogs
 yesterday=`date -j -v-1d +"%Y"."%m"."%d"`
@@ -146,6 +148,11 @@ dbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $16}'`
 dbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $16}'`
 ibwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $19}'`
 ibwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $19}'`
+
+#show stats since boot
+echo Uptime: $uptime
+echo $datasinceboot
+echo 
 
 # Bandwidth served to clients
 echo "Cacher has retrieved the following stats for $yesterday:"
