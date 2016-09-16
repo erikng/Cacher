@@ -7,7 +7,6 @@
 
 ## Variables
 uptime=`uptime | sed 's/.*up \([^,]*\), .*/\1/'`
-datasinceboot=`cat /Library/Server/Caching/Logs/Debug.log | grep returned | tail -1`
 loglocation=/Library/Server/Caching/Logs
 tmplocation=/tmp/CacheLogs
 yesterday=`date -j -v-1d +"%Y"."%m"."%d"`
@@ -25,6 +24,9 @@ cd $loglocation
 for i in *.bz2; do 
     bzip2 -d "$i"
 done
+
+#Moved to go through all logs once the latest log file has been unzipped.
+datasinceboot=`cat /Library/Server/Caching/Logs/*.log | grep returned | tail -1`
 
 ## Run through each debug log, find all entries for yesterday's date and merge into a combined log.
 grep -E ^\s*"${yesterday}" ./* > "${tmplocation}"/MergedLog-"${yesterday}".log
