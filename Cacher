@@ -152,15 +152,15 @@ ibwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $19}'`
 ibwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $19}'`
 
 #show stats since boot
-echo Uptime: $uptime
-echo $datasinceboot
-echo 
+echo Uptime: $uptime >> "${tmplocation}"/AlertInfo.txt 
+echo $datasinceboot >> "${tmplocation}"/AlertInfo.txt 
+echo >> "${tmplocation}"/AlertInfo.txt 
 
 # Bandwidth served to clients
 echo "Cacher has retrieved the following stats for $yesterday:"
 echo "Cacher has retrieved the following stats for $yesterday:" >> "${tmplocation}"/AlertInfo.txt 
 echo
-echo  " " >> "${tmplocation}"/AlertInfo.txt
+echo  " " >> "${tmplocation}"/AlertInfo.txt 
 # Case 1
 if [[ "$cbwf" == "bytes" && "$cbwl" == "bytes" ]]; then
 	echo $case1bwclient Bytes of Bandwidth served to clients.
