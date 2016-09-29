@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 09/23/2016
+## Last Modified 09/29/2016
 
 ## Variables
 version='2.0'
@@ -333,10 +333,16 @@ egrep --only-matching -E ''9'\.(3)$' "${tmplocation}"/Total_iOS.txt > "${tmploca
 egrep -o "(9.3.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.1.txt
 ## Look for only "9.3.2" and output
 egrep -o "(9.3.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.2.txt
+## Look for only "9.3.3" and output
+egrep -o "(9.3.3)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.3.txt
+## Look for only "9.3.4" and output
+egrep -o "(9.3.4)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.4.txt
+## Look for only "9.3.5" and output
+egrep -o "(9.3.5)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.5.txt
 ### iOS 10
 ## Look for only "10.0.1" and output
 egrep -o "(10.0.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.1.txt
-## Look for only "10.0.1" and output
+## Look for only "10.0.2" and output
 egrep -o "(10.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.2.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
@@ -362,6 +368,9 @@ totalios921number=`wc -l "${tmplocation}"/iOS_9.2.1.txt | awk '{print $1}'`
 totalios930number=`wc -l "${tmplocation}"/iOS_9.3.txt | awk '{print $1}'`
 totalios931number=`wc -l "${tmplocation}"/iOS_9.3.1.txt | awk '{print $1}'`
 totalios932number=`wc -l "${tmplocation}"/iOS_9.3.2.txt | awk '{print $1}'`
+totalios933number=`wc -l "${tmplocation}"/iOS_9.3.3.txt | awk '{print $1}'`
+totalios934number=`wc -l "${tmplocation}"/iOS_9.3.4.txt | awk '{print $1}'`
+totalios935number=`wc -l "${tmplocation}"/iOS_9.3.5.txt | awk '{print $1}'`
 ### iOS 10
 totalios1001number=`wc -l "${tmplocation}"/iOS_10.0.1.txt | awk '{print $1}'`
 totalios1002number=`wc -l "${tmplocation}"/iOS_10.0.2.txt | awk '{print $1}'`
@@ -525,6 +534,9 @@ echo "  $totalios921number iOS 9.2.1 Devices" 2>&1 | tee -a "${tmplocation}"/Ale
 echo "  $totalios930number iOS 9.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios931number iOS 9.3.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios932number iOS 9.3.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $totalios933number iOS 9.3.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $totalios934number iOS 9.3.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $totalios935number iOS 9.3.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios1001number iOS 10.0.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios1002number iOS 10.0.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo 
@@ -600,56 +612,7 @@ echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 ## Anything containing the phrase "%Darwin" means it is OS X related. Read the merged log and output to new file
 egrep -o "(\s(Darwin\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_OS_X.txt
 
-#Apple devices running 10.8.2 and above automatically use a nearby caching server if available; Uncomment previous versions if you want them in your reports
-### OS X 10.5 Leopard
-#egrep -o "(\/(9.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.0.txt
-#egrep -o "(\/(9.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.1.txt
-#egrep -o "(\/(9.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.2.txt
-#egrep -o "(\/(9.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.3.txt
-#egrep -o "(\/(9.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.4.txt
-#egrep -o "(\/(9.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.5.txt
-#egrep -o "(\/(9.6.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.6.txt
-#egrep -o "(\/(9.7.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.7.txt
-#egrep -o "(\/(9.8.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.5.8.txt
-### OS X 10.6 Snow Leopard
-#egrep -o "(\/(10.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.0.txt
-#egrep -o "(\/(10.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.1.txt
-#egrep -o "(\/(10.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.2.txt
-#egrep -o "(\/(10.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.3.txt
-#egrep -o "(\/(10.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.4.txt
-#egrep -o "(\/(10.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.5.txt
-#egrep -o "(\/(10.6.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.6.txt
-#egrep -o "(\/(10.7.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.7.txt
-#egrep -o "(\/(10.8.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.6.8.txt
-### OS X 10.7 Lion
-# 10.7.0 remained the same version number with Darwin release 11.0.0 and 11.0.2
-#egrep -o "(\/(11.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.0.txt
-#egrep -o "(\/(11.0.2))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.0_1.txt
-#egrep -o "(\/(11.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.1.txt
-#egrep -o "(\/(11.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.2.txt
-#egrep -o "(\/(11.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.3.txt
-#egrep -o "(\/(11.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.4.txt
-#egrep -o "(\/(11.4.2))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.7.5.txt
-### OS X 10.8 Mountain Lion
-#egrep -o "(\/(12.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.0.txt
-#egrep -o "(\/(12.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.1.txt
-egrep -o "(\/(12.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.2.txt
-egrep -o "(\/(12.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.3.txt
-egrep -o "(\/(12.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.4.txt
-egrep -o "(\/(12.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.8.5.txt
-### OS X 10.9 Mavericks
-# Cannot distinguish 10.9.0 from 10.9.1
-egrep -o "(\/(13.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.9.0.txt
-egrep -o "(\/(13.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.9.2.txt
-egrep -o "(\/(13.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.9.3.txt
-egrep -o "(\/(13.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.9.4.txt
-egrep -o "(\/(13.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.9.5.txt
-### OS X 10.10 Yosemite
-# Cannot distinguish 10.10.0 from 10.10.1
-egrep -o "(\/(14.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.0.txt
-egrep -o "(\/(14.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.2.txt
-egrep -o "(\/(14.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.3.txt
-egrep -o "(\/(14.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.4.txt
+### OS X 10.10 Yosemite (Last release only [10.10.5])
 egrep -o "(\/(14.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.5.txt
 ### OS X 10.11 El Capitan
 # Cannot distinguish 10.11 from 10.11.1; OS X was not released with Darwin 15.1.
@@ -664,56 +627,7 @@ egrep -o "(\/(16.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 totalosxnumber=`wc -l "${tmplocation}"/Total_OS_X.txt | awk '{print $1}'`
-### OS X 10.5 Leopard
-#total1050number=`wc -l "${tmplocation}"/Total_OS_X_10.5.0.txt | awk '{print $1}'`
-#total1051number=`wc -l "${tmplocation}"/Total_OS_X_10.5.1.txt | awk '{print $1}'`
-#total1052number=`wc -l "${tmplocation}"/Total_OS_X_10.5.2.txt | awk '{print $1}'`
-#total1053number=`wc -l "${tmplocation}"/Total_OS_X_10.5.3.txt | awk '{print $1}'`
-#total1054number=`wc -l "${tmplocation}"/Total_OS_X_10.5.4.txt | awk '{print $1}'`
-#total1055number=`wc -l "${tmplocation}"/Total_OS_X_10.5.5.txt | awk '{print $1}'`
-#total1056number=`wc -l "${tmplocation}"/Total_OS_X_10.5.6.txt | awk '{print $1}'`
-#total1057number=`wc -l "${tmplocation}"/Total_OS_X_10.5.7.txt | awk '{print $1}'`
-#total1058number=`wc -l "${tmplocation}"/Total_OS_X_10.5.8.txt | awk '{print $1}'`
-### OS X 10.6 Snow Leopard
-#total1060number=`wc -l "${tmplocation}"/Total_OS_X_10.6.0.txt | awk '{print $1}'`
-#total1061number=`wc -l "${tmplocation}"/Total_OS_X_10.6.1.txt | awk '{print $1}'`
-#total1062number=`wc -l "${tmplocation}"/Total_OS_X_10.6.2.txt | awk '{print $1}'`
-#total1063number=`wc -l "${tmplocation}"/Total_OS_X_10.6.3.txt | awk '{print $1}'`
-#total1064number=`wc -l "${tmplocation}"/Total_OS_X_10.6.4.txt | awk '{print $1}'`
-#total1065number=`wc -l "${tmplocation}"/Total_OS_X_10.6.5.txt | awk '{print $1}'`
-#total1066number=`wc -l "${tmplocation}"/Total_OS_X_10.6.6.txt | awk '{print $1}'`
-#total1067number=`wc -l "${tmplocation}"/Total_OS_X_10.6.7.txt | awk '{print $1}'`
-#total1068number=`wc -l "${tmplocation}"/Total_OS_X_10.6.8.txt | awk '{print $1}'`
-### OS X 10.7 Lion
-# 10.7.0 remained the same version number with Darwin release 11.0.0 and 11.0.2
-#total1070number=`wc -l "${tmplocation}"/Total_OS_X_10.7.0.txt | awk '{print $1}'`
-#total10701number=`wc -l "${tmplocation}"/Total_OS_X_10.7.0_1.txt | awk '{print $1}'`
-#total1071number=`wc -l "${tmplocation}"/Total_OS_X_10.7.1.txt | awk '{print $1}'`
-#total1072number=`wc -l "${tmplocation}"/Total_OS_X_10.7.2.txt | awk '{print $1}'`
-#total1073number=`wc -l "${tmplocation}"/Total_OS_X_10.7.3.txt | awk '{print $1}'`
-#total1074number=`wc -l "${tmplocation}"/Total_OS_X_10.7.4.txt | awk '{print $1}'`
-#total1075number=`wc -l "${tmplocation}"/Total_OS_X_10.7.5.txt | awk '{print $1}'`
-### OS X 10.8 Mountain Lion
-#total1080number=`wc -l "${tmplocation}"/Total_OS_X_10.8.0.txt | awk '{print $1}'`
-#total1081number=`wc -l "${tmplocation}"/Total_OS_X_10.8.1.txt | awk '{print $1}'`
-total1082number=`wc -l "${tmplocation}"/Total_OS_X_10.8.2.txt | awk '{print $1}'`
-total1083number=`wc -l "${tmplocation}"/Total_OS_X_10.8.3.txt | awk '{print $1}'`
-total1084number=`wc -l "${tmplocation}"/Total_OS_X_10.8.4.txt | awk '{print $1}'`
-total1085number=`wc -l "${tmplocation}"/Total_OS_X_10.8.5.txt | awk '{print $1}'`
-### OS X 10.9 Mavericks
-# Cannot distinguish 10.9.0 from 10.9.1
-total1090number=`wc -l "${tmplocation}"/Total_OS_X_10.9.0.txt | awk '{print $1}'`
-total1091number=`wc -l "${tmplocation}"/Total_OS_X_10.9.1.txt | awk '{print $1}'`
-total1092number=`wc -l "${tmplocation}"/Total_OS_X_10.9.2.txt | awk '{print $1}'`
-total1093number=`wc -l "${tmplocation}"/Total_OS_X_10.9.3.txt | awk '{print $1}'`
-total1094number=`wc -l "${tmplocation}"/Total_OS_X_10.9.4.txt | awk '{print $1}'`
-total1095number=`wc -l "${tmplocation}"/Total_OS_X_10.9.5.txt | awk '{print $1}'`
-### OS X 10.10 Yosemite
-# Cannot distinguish 10.10.0 from 10.10.1
-total10100number=`wc -l "${tmplocation}"/Total_OS_X_10.10.0.txt | awk '{print $1}'`
-total10102number=`wc -l "${tmplocation}"/Total_OS_X_10.10.2.txt | awk '{print $1}'`
-total10103number=`wc -l "${tmplocation}"/Total_OS_X_10.10.3.txt | awk '{print $1}'`
-total10104number=`wc -l "${tmplocation}"/Total_OS_X_10.10.4.txt | awk '{print $1}'`
+### OS X 10.10 Yosemite (Last release only [10.10.5])
 total10105number=`wc -l "${tmplocation}"/Total_OS_X_10.10.5.txt | awk '{print $1}'`
 ### OS X 10.11 El Capitan
 # Cannot distinguish 10.11 from 10.11.1; OS X was not released with Darwin 15.1.
@@ -728,46 +642,6 @@ total10120number=`wc -l "${tmplocation}"/Total_OS_X_10.12.0.txt | awk '{print $1
 
 ## Output Darwin data.
 echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1050number OS X Leopard 10.5.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1051number OS X Leopard 10.5.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1052number OS X Leopard 10.5.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1053number OS X Leopard 10.5.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1054number OS X Leopard 10.5.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1055number OS X Leopard 10.5.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1056number OS X Leopard 10.5.6 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1057number OS X Leopard 10.5.7 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1058number OS X Leopard 10.5.8 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1060number OS X Snow Leopard 10.6.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1061number OS X Snow Leopard 10.6.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1062number OS X Snow Leopard 10.6.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1063number OS X Snow Leopard 10.6.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1064number OS X Snow Leopard 10.6.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1065number OS X Snow Leopard 10.6.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1066number OS X Snow Leopard 10.6.6 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1067number OS X Snow Leopard 10.6.7 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1068number OS X Snow Leopard 10.6.8 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1070number OS X Lion 10.7.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total10701number OS X Lion 10.7.0_1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1071number OS X Lion 10.7.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1072number OS X Lion 10.7.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1073number OS X Lion 10.7.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1074number OS X Lion 10.7.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1075number OS X Lion 10.7.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1080number OS X Mountain Lion 10.8.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-#echo "  $total1081number OS X Mountain Lion 10.8.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1082number OS X Mountain Lion 10.8.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1083number OS X Mountain Lion 10.8.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1084number OS X Mountain Lion 10.8.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1085number OS X Mountain Lion 10.8.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1090number OS X Mavericks 10.9.0/10.9.0.1 Devices [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1092number OS X Mavericks 10.9.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1093number OS X Mavericks 10.9.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1094number OS X Mavericks 10.9.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total1095number OS X Mavericks 10.9.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10100number OS X Yosemite 10.10.0/10.10.1 Devices [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10102number OS X Yosemite 10.10.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10103number OS X Yosemite 10.10.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10104number OS X Yosemite 10.10.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $total10105number OS X Yosemite 10.10.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $total10110number OS X El Capitan 10.11.0/10.11.1 Devices [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $total10112number OS X El Capitan 10.11.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
