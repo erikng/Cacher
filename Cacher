@@ -675,7 +675,7 @@ totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
 
 ## Output Darwin data.
 echo "A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalac200number Applications downloaded from Apple Configurator 2.0/2.1/2.2 [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $totalac200number Applications downloaded from Apple Configurator 2.0/2.1/2.2/2.3 [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 
