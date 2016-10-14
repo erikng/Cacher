@@ -3,7 +3,7 @@
 # This script will process Caching Server Debug Logs and e-mail the information to relevant parties
 # through the use of Apple's Server Alert mechanism.
 ## Written by Erik Gomez with help from Google Search.
-## Last Modified 09/29/2016
+## Last Modified 10/13/2016
 
 ## Variables
 version='2.0'
@@ -481,6 +481,8 @@ totalipad43=`egrep -o "(iPad4,3)" "${tmplocation}"/Total_models.txt | wc -l | aw
 totalipad44=`egrep -o "(iPad4,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPad4,5" and output
 totalipad45=`egrep -o "(iPad4,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
+## Look for "iPad4,6" and output
+totalipad46=`egrep -o "(iPad4,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPad4,7" and output
 totalipad47=`egrep -o "(iPad4,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
 ## Look for "iPad4,8" and output
@@ -591,6 +593,7 @@ echo "    $totalipad26 iPad Mini 1st Generation [Wifi + GSM]" 2>&1 | tee -a "${t
 echo "    $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad44 iPad Mini 2nd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "    $totalipad46 iPad Mini 2nd Generation [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad47 iPad Mini 3rd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad49 iPad Mini 3rd Generation [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
