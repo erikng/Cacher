@@ -344,6 +344,8 @@ egrep -o "(9.3.5)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.5.t
 egrep -o "(10.0.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.1.txt
 ## Look for only "10.0.2" and output
 egrep -o "(10.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.2.txt
+## Look for only "10.1" and output
+egrep --only-matching -E ''10'\.(1)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.1.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 ### iOS 8
@@ -374,6 +376,7 @@ totalios935number=`wc -l "${tmplocation}"/iOS_9.3.5.txt | awk '{print $1}'`
 ### iOS 10
 totalios1001number=`wc -l "${tmplocation}"/iOS_10.0.1.txt | awk '{print $1}'`
 totalios1002number=`wc -l "${tmplocation}"/iOS_10.0.2.txt | awk '{print $1}'`
+totalios1010number=`wc -l "${tmplocation}"/iOS_10.1.txt | awk '{print $1}'`
 
 ## Anything containing the phrase "%model" means it is model type related. Read the merged log and output to new file
 egrep -o "(\s(model\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_models.txt
@@ -541,6 +544,7 @@ echo "  $totalios934number iOS 9.3.4 Devices" 2>&1 | tee -a "${tmplocation}"/Ale
 echo "  $totalios935number iOS 9.3.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios1001number iOS 10.0.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $totalios1002number iOS 10.0.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $totalios1010number iOS 10.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 ## iOS Model Breakdown
