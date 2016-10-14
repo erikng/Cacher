@@ -631,6 +631,7 @@ egrep -o "(\/(15.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total
 egrep -o "(\/(15.6.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.6.txt
 ### OS X 10.12 Sierra
 egrep -o "(\/(16.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.12.0.txt
+egrep -o "(\/(16.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.12.1.txt
 
 ## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
 totalosxnumber=`wc -l "${tmplocation}"/Total_OS_X.txt | awk '{print $1}'`
@@ -646,6 +647,7 @@ total10115number=`wc -l "${tmplocation}"/Total_OS_X_10.11.5.txt | awk '{print $1
 total10116number=`wc -l "${tmplocation}"/Total_OS_X_10.11.6.txt | awk '{print $1}'`
 ### OS X 10.12 Sierra
 total10120number=`wc -l "${tmplocation}"/Total_OS_X_10.12.0.txt | awk '{print $1}'`
+total10121number=`wc -l "${tmplocation}"/Total_OS_X_10.12.1.txt | awk '{print $1}'`
 
 ## Output Darwin data.
 echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
@@ -657,6 +659,7 @@ echo "  $total10114number OS X El Capitan 10.11.4 Devices" 2>&1 | tee -a "${tmpl
 echo "  $total10115number OS X El Capitan 10.11.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $total10116number OS X El Capitan 10.11.6 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "  $total10120number OS X Sierra 10.12.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "  $total10121number OS X Sierra 10.12.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo 
 echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 
