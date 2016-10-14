@@ -567,10 +567,10 @@ echo "    $totaliphone71 iPhone 6 Plus" 2>&1 | tee -a "${tmplocation}"/AlertInfo
 echo "    $totaliphone81 iPhone 6S" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone82 iPhone 6S Plus" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totaliphone84 iPhone SE" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone91 iPhone 7" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone92 iPhone 7 Plus" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone93 iPhone 7 ?" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone94 iPhone 7 Plus ?" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone91 iPhone 7 [Global]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone92 iPhone 7 Plus [Global]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone93 iPhone 7 [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
+echo "    $totaliphone94 iPhone 7 Plus [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 ### iPads
 echo "  $totalipadnumber Total iPads" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
 echo "    $totalipad21 iPad 2nd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
