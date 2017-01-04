@@ -661,12 +661,8 @@ def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
         "icon_url": iconurl,
         "attachments": [
             {
-                'fields': [
-                    {
-                        'title': 'Caching Server Data ' + targetDate,
-                        'value': cacherdata
-                    }
-                ]
+                'pretext': 'Caching Server Data ' + targetDate,
+                'text': cacherdata
             }
         ]
     }
