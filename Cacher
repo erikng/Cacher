@@ -154,6 +154,9 @@ def cacher(lines, targetDate, friendlyNames):
                 # This is a very fragile part of the script, but for now, I
                 # don't care. Split the logmsg and pull the data points I need
                 # from exact split points. This could break at any time.
+                # Ex: Since server start: 1.09 GB returned to clients,
+                # 12.51 MB stored from Internet, 0 bytes from peers;
+                # 0 bytes imported.
                 if 'start:' in logmsg:
                     clientbw = linesplit[3]
                     clientbwtype = linesplit[4]
@@ -288,9 +291,16 @@ def cacher(lines, targetDate, friendlyNames):
         print 'Cacher did not retrieve any stats for %s' % targetDate
         sys.exit(1)
     else:
+        # Cheat (again) and split the sizeLog so we can do our multiplication
+        # below.
         firstotalbw = sizeLog[0].split("/")
         lasttotalbw = sizeLog[-1].split("/")
-
+    # Mulitply the type of bandwidth by the amount of bytes. This facilitates
+    # the next part to calculate the bandwidth.
+    #
+    # Since the logs are now split, we are given a list. Take this list and
+    # calculate bandwidth type. Should probably do this in a loop, but oh well.
+    # Ex. [1.09, GB, 12.51, MB, 0, bytes]
     if firstotalbw[1] == 'TB':
         firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1099511627776)
     elif firstotalbw[1] == 'GB':
@@ -345,6 +355,11 @@ def cacher(lines, targetDate, friendlyNames):
     elif firstotalbw[5] == 'bytes':
         lasttotalbw[4] = float(lasttotalbw[4])
 
+    # Now take the last bandwidth number from the first one to get our total
+    # bandwidth served. Depending on the amount of bytes, we must divide by
+    # its relevant factor.
+    # Since we know the factor we are dividing by, we can also append the
+    # bandwidth type.
     totalclientbw = "%.2f" % (
         (float(lasttotalbw[0]) - float(firstotalbw[0])))
     if float(totalclientbw) >= 1099511627776:
