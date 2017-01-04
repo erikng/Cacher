@@ -1,770 +1,806 @@
-#!/bin/sh
-
-# This script will process Caching Server Debug Logs and e-mail the information to relevant parties
-# through the use of Apple's Server Alert mechanism.
-## Written by Erik Gomez with help from Google Search.
-## Last Modified 10/13/2016
-
-## Variables
-version='2.0'
-uptime=`uptime | sed 's/.*up \([^,]*\), .*/\1/'`
-loglocation=/Library/Server/Caching/Logs
-tmplocation=/tmp/CacheLogs
-yesterday=`date -j -v-1d +"%Y"."%m"."%d"`
-serverversion=`defaults read /Applications/Server.app/Contents/version.plist CFBundleShortVersionString`
-
-mkdir -p $tmplocation
-
-
-# Stage I: Take Dates and merge into one log file
-
-## UGLY! Change directory to log directory because of the way I'm grepping the data. 
-cd $loglocation 
-
-# Fix for Server 4.1+ - Apple decided to zip all of the log files to save ~50 MB of space. :)
-for i in *.bz2; do 
-    bzip2 -d "$i"
-done
-
-#Moved to go through all logs once the latest log file has been unzipped.
-datasinceboot=`cat /Library/Server/Caching/Logs/*.log | grep returned | tail -1`
-
-## Run through each debug log, find all entries for yesterday's date and merge into a combined log.
-grep -E ^\s*"${yesterday}" ./* > "${tmplocation}"/MergedLog-"${yesterday}".log
-
-if [[ "$serverversion" == *5* ]]
-## Run through merged log, and delete all logs except downloads for proper iOS/OS X device count.
-	then
-		# sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Received //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
-		sed -n -e  's/^.*Received //p' "${tmplocation}"/MergedLog-"${yesterday}".log | sed -n -e  's/^.*from //p' | sort > "${tmplocation}"/URL_Log-"${yesterday}".log
-	else
-		sed '/Registering/d' "${tmplocation}"/MergedLog-"${yesterday}".log | sed '/public/d' | sed '/registration/d' | sed '/peers/d' | sed '/Opened/d' | sed '/ECResponse/d' | sed '/ECAssetHandler/d' | sed '/ECAssetRequestor/d' | sed '/ECCacheReader/d' | sed '/ECCacheManager/d' | sed '/Bad/d' | sed -n -e  's/^.*Request //p' | sed -n -e  's/^.*from //p' | sort | awk '!x[$1]++' FS=":" > "${tmplocation}"/URL_Log-"${yesterday}".log
-fi
-
-# Stage II: Take Bandwidth served from log file, output into a file and calculate
-
-## Anything containing the phrase "start:" means it is bandwidth related. Read the merged log and output to new file.
-sed -n -e 's/^.*start: //p ' "${tmplocation}"/MergedLog-"${yesterday}".log > "${tmplocation}"/Bandwidth_served.txt
-
-## Fix for when a caching server is rebooted in the middle of a day. You will lose bandwidth served prior to reboot.
-## UGLY! Take the first and last line from the new file, trim any parenthesis and output to new files.
-if grep -q MB "${tmplocation}"/Bandwidth_served.txt; then
-	sed -n -e '/MB/,$p' "${tmplocation}"/Bandwidth_served.txt > "${tmplocation}"/Bandwidth_served_fixed.txt
-	head -n1 < "${tmplocation}"/Bandwidth_served_fixed.txt | tr -d '()' > "${tmplocation}"/Bandwidth_First.txt
-	tail -n1 < "${tmplocation}"/Bandwidth_served_fixed.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
-else
-	head -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_First.txt
-	tail -n1 < "${tmplocation}"/Bandwidth_served.txt | tr -d '()' > "${tmplocation}"/Bandwidth_Last.txt
-fi
-
-# Dumb math section.
-# Here is where the bandwidth statistics are generated:
-# We have a few situations as of Server 5:
-# 1 - Bytes
-# 2 - Megabytes
-# 4 - Gigabytes
-# 5 - Terabytes (anything higher and I question if you're working for Apple).
-# Because bandwidth can change often, we need to account for each case. 
-# Each case consists of subtracting the last bandwidth from the first, and some will require multiplication and division.
-
-## UGLY! Print out the words 1, 6, 11, and 15 because this da bandwidth.
-# 1 - Client Bandwidth
-# 6 - Bandwidth from Apple
-# 11 - Peer bandwidth
-# 15 - Dropped bandwidth
-# 18 - Imported bandwidth (I'm not exactly sure what this is yet. This could potentially be imported bandwidth since service started.
-bwclient1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $1}'`
-bwclient2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $1}'`
-bwapple1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $6}'`
-bwapple2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $6}'`
-bwpeer1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $11}'`
-bwpeer2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $11}'`
-bwdropped1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $15}'`
-bwdropped2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $15}'`
-bwimported1=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $18}'`
-bwimported2=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $18}'`
-
-
-# Case 1: The Easy Case - Your server started and ended with the same type of bandwidth.
-# Examples: bytes -> bytes, Megabytes -> Megabytes, Gigabytes -> Gigabytes, Terabytes -> Terabytes.
-# Subtract the last reported bandwidth value from the first reported bandwidth value
-case1bwclient=`echo $bwclient2-$bwclient1 | bc`
-case1bwapple=`echo $bwapple2-$bwapple1 | bc`
-case1bwpeer=`echo $bwpeer2-$bwpeer1 | bc`
-case1bwdropped=`echo $bwdropped2-$bwdropped1 | bc`
-case1bwimported=`echo $bwimported2-$bwimported1 | bc`
-
-# Case 2: The Magic Mushroom Case - Your server started serving one set of bandwidth and ended with the next multiplier.
-# Examples: bytes -> Megabytes, Megabytes -> Gigabytes, Gigabytes -> Terabytes.
-# Multiply the last reported bandwidth value by 1024 and then subtract from first reported bandwidth value.
-# After generating result, divide by 1024 to maintain the final original scale.
-case2bwclient=`echo $bwclient2*1024-$bwclient1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case2bwapple=`echo $bwapple2*1024-$bwapple1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case2bwpeer=`echo $bwpeer2*1024-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case2bwdropped=`echo $bwdropped2*1024-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case2bwimported=`echo $bwimported2*1024-$bwimported1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-
-# Case 3: The Shrinking Potion Case - Your server started serving one set of bandwidth and ended with the previous multiplier.
-# Examples: Terabytes -> Gigabytes, Gigabytes -> Megabytes, Megabytes -> bytes
-case3bwclient=`echo $bwclient2/1024-$bwclient1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case3bwapple=`echo $bwapple2/1024-$bwapple1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case3bwpeer=`echo $bwpeer2/1024-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case3bwdropped=`echo $bwdropped2/1024-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-case3bwimported=`echo $bwimported2/1024-$bwimported1 | bc | awk '{print "scale=3;"$1"/1024"}' | bc`
-
-# Case 4: The Super Sonic Case - Your server found all the Chaos Emeralds and jumped two multipliers.
-# Examples: bytes -> Gigabytes, Megabytes -> Terabytes
-# Multiply the last reported bandwidth value by 1048576 and then subtract from first reported bandwidth value.
-# After generating result, divide by 1048576 to maintain the final original scale.
-case4bwclient=`echo $bwclient2*1048576-$bwclient1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
-case4bwapple=`echo $bwapple2*1048576-$bwapple1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
-case4bwpeer=`echo $bwpeer2*1048576-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
-case4bwdropped=`echo $bwdropped2*1048576-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
-case4bwimported=`echo $bwimported2*1048576-$bwimported1 | bc | awk '{print "scale=3;"$1"/1048576"}' | bc`
-
-# Case 5: The 'Please bring up more caching servers' Case - Your server miraculously jumped all multipliers.
-# Example: bytes -> Terabytes
-# Multiply the last reported bandwidth value by 1073741824 and then subtract from first reported bandwidth value.
-# After generating result, divide by 1073741824 to maintain the final original scale.
-case5bwclient=`echo $bwclient2*1073741824-$bwclient1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
-case5bwapple=`echo $bwapple2*1073741824-$bwapple1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
-case5bwpeer=`echo $bwpeer2*1073741824-$bwpeer1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
-case5bwdropped=`echo $bwdropped2*1073741824-$bwdropped1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
-case5bwimported=`echo $bwimported2*1073741824-$bwimported1 | bc | awk '{print "scale=3;"$1"/1073741824"}' | bc`
-
-# Case 6: The Update/Restart Service case - You applied updates in the middle of the day.
-# My feeble brain has no fix for this at the moment. :)
-
-## Now that we have the cases/math equations, we can grep the values to determine what cases we need to run.
-# 2 - Client Bandwidth
-# 7 - Bandwidth from Apple
-# 12 - Peer bandwidth
-# 16 - Dropped bandwidth
-# 19 - Imported bandwidth (I'm not exactly sure what this is yet. This could potentially be imported bandwidth since service started.
-cbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $2}'`
-cbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $2}'`
-rbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $7}'`
-rbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $7}'`
-pbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $12}'`
-pbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $12}'`
-dbwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $16}'`
-dbwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $16}'`
-ibwf=`grep "" "${tmplocation}"/Bandwidth_First.txt | awk '{print $19}'`
-ibwl=`grep "" "${tmplocation}"/Bandwidth_Last.txt | awk '{print $19}'`
-
-#show stats since boot
-echo "Uptime: $uptime" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "$datasinceboot" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Bandwidth served to clients
-echo "Cacher has retrieved the following stats for $yesterday:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 1
-if [[ "$cbwf" == "bytes" && "$cbwl" == "bytes" ]]; then
-	echo "$case1bwclient Bytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "MB" && "$cbwl" == "MB" ]]; then
-	echo "$case1bwclient Megabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "GB" && "$cbwl" == "GB" ]]; then
-	echo "$case1bwclient Gigabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "TB" && "$cbwl" == "TB" ]]; then
-	echo "$case1bwclient Terabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 2			
-elif [[ "$cbwf" == "bytes" && "$cbwl" == "MB" ]]; then
-	echo "$case2bwclient Megabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "MB" && "$cbwl" == "GB" ]]; then
-	echo "$case2bwclient Gigabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "GB" && "$cbwl" == "TB" ]]; then
-	echo "$case2bwclient Terabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 3
-elif [[ "$cbwf" == "MB" && "$cbwl" == "bytes" ]]; then
-	echo "$case3bwclient Bytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "GB" && "$cbwl" == "MB" ]]; then
-	echo "$case3bwclient Megabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "TB" && "$cbwl" == "GB" ]]; then
-	echo "$case3bwclient Gigabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 4
-elif [[ "$cbwf" == "bytes" && "$cbwl" == "GB" ]]; then
-	echo "$case4bwclient Gigabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$cbwf" == "MB" && "$cbwl" == "TB" ]]; then
-	echo "$case4bwclient Terabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 5
-elif [[ "$cbwf" == "bytes" && "$cbwl" == "TB" ]]; then
-	echo "$case5bwclient Terabytes of Bandwidth served to clients." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-else
-	echo "Cacher could not determine served bandwidth. Please submit a Github issue and privately send your caching logs." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-fi
-
-# Bandwidth requested from Apple
-# Case 1
-if [[ "$rbwf" == "bytes" && "$rbwl" == "bytes" ]]; then
-	echo "    $case1bwapple Bytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "MB" && "$rbwl" == "MB" ]]; then
-	echo "    $case1bwapple Megabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "GB" && "$rbwl" == "GB" ]]; then
-	echo "    $case1bwapple Gigabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "TB" && "$rbwl" == "TB" ]]; then
-	echo "    $case1bwapple Terabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 2			
-elif [[ "$rbwf" == "bytes" && "$rbwl" == "MB" ]]; then
-	echo "    $case2bwapple Megabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "MB" && "$rbwl" == "GB" ]]; then
-	echo "    $case2bwapple Gigabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "GB" && "$rbwl" == "TB" ]]; then
-	echo "    $case2bwapple Terabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 3
-elif [[ "$rbwf" == "MB" && "$rbwl" == "bytes" ]]; then
-	echo "    $case3bwapple Bytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "GB" && "$rbwl" == "MB" ]]; then
-	echo "    $case3bwapple Megabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "TB" && "$rbwl" == "GB" ]]; then
-	echo "    $case3bwapple Gigabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 4
-elif [[ "$rbwf" == "bytes" && "$rbwl" == "GB" ]]; then
-	echo "    $case4bwapple Gigabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$rbwf" == "MB" && "$rbwl" == "TB" ]]; then
-	echo "    $case4bwapple Terabytes of Bandwidth requested from Apple" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 5
-elif [[ "$rbwf" == "bytes" && "$rbwl" == "TB" ]]; then
-	echo "    $case5bwapple Terabytes of Bandwidth requested from Apple:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-else
-	echo "    Cacher could not determine requested bandwith. Please submit a Github issue and privately send your caching logs." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-fi
-
-# Bandwidth requested from other Caching Servers
-# Case 1
-if [[ "$pbwf" == "bytes" && "$pbwl" == "bytes" ]]; then
-	echo "    $case1bwpeer Bytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "MB" && "$pbwl" == "MB" ]]; then
-	echo "    $case1bwpeer Megabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "GB" && "$pbwl" == "GB" ]]; then
-	echo "    $case1bwpeer Gigabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "TB" && "$pbwl" == "TB" ]]; then
-	echo "    $case1bwpeer Terabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 2			
-elif [[ "$pbwf" == "bytes" && "$pbwl" == "MB" ]]; then
-	echo "    $case2bwpeer Megabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "MB" && "$pbwl" == "GB" ]]; then
-	echo "    $case2bwpeer Gigabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "GB" && "$pbwl" == "TB" ]]; then
-	echo "    $case2bwpeer Terabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 3
-elif [[ "$pbwf" == "MB" && "$pbwl" == "bytes" ]]; then
-	echo "    $case3bwpeer Bytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "GB" && "$pbwl" == "MB" ]]; then
-	echo "    $case3bwpeer Megabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "TB" && "$pbwl" == "GB" ]]; then
-	echo "    $case3bwpeer Gigabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 4
-elif [[ "$pbwf" == "bytes" && "$pbwl" == "GB" ]]; then
-	echo "    $case4bwpeer Gigabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-elif [[ "$pbwf" == "MB" && "$pbwl" == "TB" ]]; then
-	echo "    $case4bwpeer Terabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-# Case 5
-elif [[ "$pbwf" == "bytes" && "$pbwl" == "TB" ]]; then
-	echo "    $case5bwpeer Terabytes of Bandwidth requested from other Caching Servers" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-else
-	echo "    Cacher could not determine bandwidth from other Caching Servers. Please submit a Github issue and privately send your caching logs." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-fi
-
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Stage III: Extract IP's from log file, output into file and remove duplicates.
-
-## Look for IP's matching Server's subnet from the Merged Log and output into a new file.
-serverip=`ifconfig en0 | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | sed 's/\./ /g' | awk '{print $1}'`
-egrep --only-matching -E  ''$serverip'\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)' "${tmplocation}"/MergedLog-"${yesterday}".log > "${tmplocation}"/Total_IPs.txt
-
-## Load txt file, sort it and delete any duplicate IP's to get your unique IP number.
-cat "${tmplocation}"/Total_IPs.txt | sort | uniq  > "${tmplocation}"/Unique_IPs.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of IP addresses.
-totalipnumber=`wc -l "${tmplocation}"/Total_IPs.txt | awk '{print $1}'`
-uniqueipnumber=`wc -l "${tmplocation}"/Unique_IPs.txt | awk '{print $1}'`
-
-## Output data.
-echo "$totalipnumber IP Addresses hit the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniqueipnumber Unique IP Addresses." 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-
-# Stage IV: Extract iOS Models and build number count.
-
-## Anything containing the phrase "%iOS" means it is build number related. Read the merged log and output to new file
-egrep -o "(\s(iOS\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_iOS.txt
-
-### iOS 8 
-## Look for only "8.0" and output
-egrep --only-matching -E ''8'\.(0)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.0.txt
-## Look for "8.0.2" and output
-egrep -o "(8.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.0.2.txt
-## Look for only "8.1" and output
-egrep --only-matching -E ''8'\.(1)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.1.txt
-## Look for "8.1.1" and output
-egrep -o "(8.1.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.1.1.txt
-## Look for "8.1.2" and output
-egrep -o "(8.1.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.1.2.txt
-## Look for "8.1.3" and output
-egrep -o "(8.1.3)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.1.3.txt
-## Look for only "8.2" and output
-egrep --only-matching -E ''8'\.(2)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.2.txt
-## Look for only "8.3" and output
-egrep --only-matching -E ''8'\.(3)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.3.txt
-## Look for only "8.4" and output
-egrep --only-matching -E ''8'\.(4)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.4.txt
-## Look for "8.4.1" and output
-egrep -o "(8.4.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_8.4.1.txt
-### iOS 9
-## Look for only "9.0" and output
-egrep --only-matching -E ''9'\.(0)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.txt
-## Look for "9.0.1" and output
-egrep -o "(9.0.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.1.txt
-## Look for "9.0.2" and output
-egrep -o "(9.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.0.2.txt
-## Look for only "9.1" and output
-egrep --only-matching -E ''9'\.(1)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.1.txt
-## Look for only "9.2" and output
-egrep --only-matching -E ''9'\.(2)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.2.txt
-## Look for only "9.2.1" and output
-egrep -o "(9.2.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.2.1.txt
-## Look for only "9.3" and output
-egrep --only-matching -E ''9'\.(3)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.txt
-## Look for only "9.3.1" and output
-egrep -o "(9.3.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.1.txt
-## Look for only "9.3.2" and output
-egrep -o "(9.3.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.2.txt
-## Look for only "9.3.3" and output
-egrep -o "(9.3.3)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.3.txt
-## Look for only "9.3.4" and output
-egrep -o "(9.3.4)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.4.txt
-## Look for only "9.3.5" and output
-egrep -o "(9.3.5)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_9.3.5.txt
-### iOS 10
-## Look for only "10.0.1" and output
-egrep -o "(10.0.1)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.1.txt
-## Look for only "10.0.2" and output
-egrep -o "(10.0.2)" "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.0.2.txt
-## Look for only "10.1" and output
-egrep --only-matching -E ''10'\.(1)$' "${tmplocation}"/Total_iOS.txt > "${tmplocation}"/iOS_10.1.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
-### iOS 8
-totaliosnumber=`wc -l "${tmplocation}"/Total_iOS.txt | awk '{print $1}'`
-totalios800number=`wc -l "${tmplocation}"/iOS_8.0.txt | awk '{print $1}'`
-totalios802number=`wc -l "${tmplocation}"/iOS_8.0.2.txt | awk '{print $1}'`
-totalios810number=`wc -l "${tmplocation}"/iOS_8.1.txt | awk '{print $1}'`
-totalios811number=`wc -l "${tmplocation}"/iOS_8.1.1.txt | awk '{print $1}'`
-totalios812number=`wc -l "${tmplocation}"/iOS_8.1.2.txt | awk '{print $1}'`
-totalios813number=`wc -l "${tmplocation}"/iOS_8.1.3.txt | awk '{print $1}'`
-totalios820number=`wc -l "${tmplocation}"/iOS_8.2.txt | awk '{print $1}'`
-totalios830number=`wc -l "${tmplocation}"/iOS_8.3.txt | awk '{print $1}'`
-totalios840number=`wc -l "${tmplocation}"/iOS_8.4.txt | awk '{print $1}'`
-totalios841number=`wc -l "${tmplocation}"/iOS_8.4.1.txt | awk '{print $1}'`
-### iOS 9
-totalios900number=`wc -l "${tmplocation}"/iOS_9.0.txt | awk '{print $1}'`
-totalios901number=`wc -l "${tmplocation}"/iOS_9.0.1.txt | awk '{print $1}'`
-totalios902number=`wc -l "${tmplocation}"/iOS_9.0.2.txt | awk '{print $1}'`
-totalios910number=`wc -l "${tmplocation}"/iOS_9.1.txt | awk '{print $1}'`
-totalios920number=`wc -l "${tmplocation}"/iOS_9.2.txt | awk '{print $1}'`
-totalios921number=`wc -l "${tmplocation}"/iOS_9.2.1.txt | awk '{print $1}'`
-totalios930number=`wc -l "${tmplocation}"/iOS_9.3.txt | awk '{print $1}'`
-totalios931number=`wc -l "${tmplocation}"/iOS_9.3.1.txt | awk '{print $1}'`
-totalios932number=`wc -l "${tmplocation}"/iOS_9.3.2.txt | awk '{print $1}'`
-totalios933number=`wc -l "${tmplocation}"/iOS_9.3.3.txt | awk '{print $1}'`
-totalios934number=`wc -l "${tmplocation}"/iOS_9.3.4.txt | awk '{print $1}'`
-totalios935number=`wc -l "${tmplocation}"/iOS_9.3.5.txt | awk '{print $1}'`
-### iOS 10
-totalios1001number=`wc -l "${tmplocation}"/iOS_10.0.1.txt | awk '{print $1}'`
-totalios1002number=`wc -l "${tmplocation}"/iOS_10.0.2.txt | awk '{print $1}'`
-totalios1010number=`wc -l "${tmplocation}"/iOS_10.1.txt | awk '{print $1}'`
-
-## Anything containing the phrase "%model" means it is model type related. Read the merged log and output to new file
-egrep -o "(\s(model\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_models.txt
-
-## Look for "TV" and output
-egrep -o "(TV)" "${tmplocation}"/Total_models.txt > "${tmplocation}"/Total_AppleTV.txt
-## Look for "iPhone" and output
-egrep -o "(iPhone)" "${tmplocation}"/Total_models.txt > "${tmplocation}"/Total_iPhone.txt
-## Look for "iPad" and output
-egrep -o "(iPad)" "${tmplocation}"/Total_models.txt > "${tmplocation}"/Total_iPad.txt
-## Look for "iPod" and output
-egrep -o "(iPod)" "${tmplocation}"/Total_models.txt > "${tmplocation}"/Total_iPod.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
-totalmodelnumber=`wc -l "${tmplocation}"/Total_models.txt | awk '{print $1}'`
-totalappletvnumber=`wc -l "${tmplocation}"/Total_AppleTV.txt | awk '{print $1}'`
-totaliphonenumber=`wc -l "${tmplocation}"/Total_iPhone.txt | awk '{print $1}'`
-totalipadnumber=`wc -l "${tmplocation}"/Total_iPad.txt | awk '{print $1}'`
-totalipodnumber=`wc -l "${tmplocation}"/Total_iPod.txt | awk '{print $1}'`
-
-## Device Identifiers AppleTV (Only 3,1 and higher can run iOS 8)
-## Look for "AppleTV3,1" and output
-totalappletv31=`egrep -o "(AppleTV3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "AppleTV3,2" and output
-totalappletv32=`egrep -o "(AppleTV3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "AppleTV5,3" and output
-totalappletv53=`egrep -o "(AppleTV5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Device Identifiers iPhone (Only 3,1 and higher can run iOS 8)
-## Look for "iPhone3,1" and output
-totaliphone31=`egrep -o "(iPhone3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone3,2" and output
-totaliphone32=`egrep -o "(iPhone3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone3,3" and output
-totaliphone33=`egrep -o "(iPhone3,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone4,1" and output
-totaliphone41=`egrep -o "(iPhone4,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone5,1" and output
-totaliphone51=`egrep -o "(iPhone5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone5,2" and output
-totaliphone52=`egrep -o "(iPhone5,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone5,3" and output
-totaliphone53=`egrep -o "(iPhone5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone5,4" and output
-totaliphone54=`egrep -o "(iPhone5,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone6,1" and output
-totaliphone61=`egrep -o "(iPhone6,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone6,2" and output
-totaliphone62=`egrep -o "(iPhone6,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone7,2" and output
-totaliphone72=`egrep -o "(iPhone7,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone7,1" and output
-totaliphone71=`egrep -o "(iPhone7,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone8,1" and output
-totaliphone81=`egrep -o "(iPhone8,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone8,2" and output
-totaliphone82=`egrep -o "(iPhone8,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone8,4" and output
-totaliphone84=`egrep -o "(iPhone8,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone9,1" and output
-totaliphone91=`egrep -o "(iPhone9,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone9,2" and output
-totaliphone92=`egrep -o "(iPhone9,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone9,3" and output
-totaliphone93=`egrep -o "(iPhone9,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPhone9,4" and output
-totaliphone94=`egrep -o "(iPhone9,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Device Identifiers iPad (Only 2,1 and higher can run iOS 8)
-## Look for "iPad2,1" and output
-totalipad21=`egrep -o "(iPad2,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,2" and output
-totalipad22=`egrep -o "(iPad2,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,3" and output
-totalipad23=`egrep -o "(iPad2,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,4" and output
-totalipad24=`egrep -o "(iPad2,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,5" and output
-totalipad25=`egrep -o "(iPad2,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,6" and output
-totalipad26=`egrep -o "(iPad2,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad2,7" and output
-totalipad27=`egrep -o "(iPad2,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Look for "iPad3,1" and output
-totalipad31=`egrep -o "(iPad3,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad3,2" and output
-totalipad32=`egrep -o "(iPad3,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad3,3" and output
-totalipad33=`egrep -o "(iPad3,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad3,4" and output
-totalipad34=`egrep -o "(iPad3,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad3,5" and output
-totalipad35=`egrep -o "(iPad3,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad3,6" and output
-totalipad36=`egrep -o "(iPad3,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Look for "iPad4,1" and output
-totalipad41=`egrep -o "(iPad4,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,2" and output
-totalipad42=`egrep -o "(iPad4,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,3" and output
-totalipad43=`egrep -o "(iPad4,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,4" and output
-totalipad44=`egrep -o "(iPad4,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,5" and output
-totalipad45=`egrep -o "(iPad4,5)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,6" and output
-totalipad46=`egrep -o "(iPad4,6)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,7" and output
-totalipad47=`egrep -o "(iPad4,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,8" and output
-totalipad48=`egrep -o "(iPad4,8)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad4,9" and output
-totalipad49=`egrep -o "(iPad4,9)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Look for "iPad5,1" and output
-totalipad51=`egrep -o "(iPad5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad5,2" and output
-totalipad52=`egrep -o "(iPad5,2)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad5,3" and output
-totalipad53=`egrep -o "(iPad5,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad5,4" and output
-totalipad54=`egrep -o "(iPad5,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Look for "iPad6,3" and output
-totalipad63=`egrep -o "(iPad6,3)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad6,4" and output
-totalipad64=`egrep -o "(iPad6,4)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad6,7" and output
-totalipad67=`egrep -o "(iPad6,7)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPad6,8" and output
-totalipad68=`egrep -o "(iPad6,8)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Device Identifiers iPod (Only 5,1 and higher can run iOS 8)
-## Look for "iPod5,1" and output
-totalipod51=`egrep -o "(iPod5,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-## Look for "iPod7,1" and output
-totalipod71=`egrep -o "(iPod7,1)" "${tmplocation}"/Total_models.txt | wc -l | awk '{print $1}'`
-
-## Output data.
-## Total iOS device numbers
-echo "A total of $totaliosnumber iOS devices hit the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios800number iOS 8.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios802number iOS 8.0.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios810number iOS 8.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios811number iOS 8.1.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios812number iOS 8.1.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios813number iOS 8.1.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios820number iOS 8.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios830number iOS 8.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios840number iOS 8.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios841number iOS 8.4.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios900number iOS 9.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios901number iOS 9.0.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios902number iOS 9.0.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios910number iOS 9.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios920number iOS 9.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios921number iOS 9.2.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios930number iOS 9.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios931number iOS 9.3.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios932number iOS 9.3.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios933number iOS 9.3.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios934number iOS 9.3.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios935number iOS 9.3.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios1001number iOS 10.0.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios1002number iOS 10.0.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalios1010number iOS 10.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo 
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-## iOS Model Breakdown
-echo "Of these devices, here is the model breakdown:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-### Apple TVs
-echo "  $totalappletvnumber Total AppleTVs" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalappletv31 3rd Generation Apple TVs" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalappletv32 4th Generation Apple TVs" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalappletv53 5th Generation Apple TVs" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-### iPhones
-echo "  $totaliphonenumber Total iPhones" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone31 iPhone 4 [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone32 iPhone 4 [GSM 2012]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone33 iPhone 4 [CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone41 iPhone 4S" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone51 iPhone 5 [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone52 iPhone 5 [CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone53 iPhone 5C" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone54 iPhone 5C [Global]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone61 iPhone 5S" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone62 iPhone 5S [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone72 iPhone 6" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone71 iPhone 6 Plus" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone81 iPhone 6S" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone82 iPhone 6S Plus" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone84 iPhone SE" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone91 iPhone 7 [Global]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone92 iPhone 7 Plus [Global]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone93 iPhone 7 [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totaliphone94 iPhone 7 Plus [GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-### iPads
-echo "  $totalipadnumber Total iPads" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad21 iPad 2nd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad22 iPad 2nd Generation [Wifi + GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad23 iPad 2nd Generation [Wifi + CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad24 iPad 2nd Generation [M2012 Wifi Revision]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad31 iPad 3rd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad32 iPad 3rd Generation [Wifi + GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad33 iPad 3rd Generation [Wifi + CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad34 iPad 4th Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad35 iPad 4th Generation [Wifi + GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad36 iPad 4th Generation [Wifi + CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad41 iPad Air 1st Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad42 iPad Air 1st Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad43 iPad Air 1st Generation [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad53 iPad Air 2nd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad54 iPad Air 2nd Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad25 iPad Mini 1st Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad26 iPad Mini 1st Generation [Wifi + GSM]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad27 iPad Mini 1st Generation [Wifi + CDMA]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad44 iPad Mini 2nd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad45 iPad Mini 2nd Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad46 iPad Mini 2nd Generation [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad47 iPad Mini 3rd Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad48 iPad Mini 3rd Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad49 iPad Mini 3rd Generation [China Model]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad51 iPad Mini 4th Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad52 iPad Mini 4th Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad63 iPad Pro 9.7 Inch 1st Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad64 iPad Pro 9.7 Inch 1st Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad67 iPad Pro 12.9 Inch 1st Generation [Wifi]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipad68 iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-### iPods
-echo "  $totalipodnumber Total iPods" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipod51 iPod Touch 5th Generation" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "    $totalipod71 iPod Touch 6th Generation" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo 
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Stage V: Extract OS X build number count.
-
-## Anything containing the phrase "%Darwin" means it is OS X related. Read the merged log and output to new file
-egrep -o "(\s(Darwin\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_OS_X.txt
-
-### OS X 10.10 Yosemite (Last release only [10.10.5])
-egrep -o "(\/(14.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.10.5.txt
-### OS X 10.11 El Capitan
-# Cannot distinguish 10.11 from 10.11.1; OS X was not released with Darwin 15.1.
-egrep -o "(\/(15.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.0.txt
-egrep -o "(\/(15.2.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.2.txt
-egrep -o "(\/(15.3.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.3.txt
-egrep -o "(\/(15.4.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.4.txt
-egrep -o "(\/(15.5.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.5.txt
-egrep -o "(\/(15.6.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.11.6.txt
-### OS X 10.12 Sierra
-egrep -o "(\/(16.0.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.12.0.txt
-egrep -o "(\/(16.1.0))" "${tmplocation}"/Total_OS_X.txt > "${tmplocation}"/Total_OS_X_10.12.1.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
-totalosxnumber=`wc -l "${tmplocation}"/Total_OS_X.txt | awk '{print $1}'`
-### OS X 10.10 Yosemite (Last release only [10.10.5])
-total10105number=`wc -l "${tmplocation}"/Total_OS_X_10.10.5.txt | awk '{print $1}'`
-### OS X 10.11 El Capitan
-# Cannot distinguish 10.11 from 10.11.1; OS X was not released with Darwin 15.1.
-total10110number=`wc -l "${tmplocation}"/Total_OS_X_10.11.0.txt | awk '{print $1}'`
-total10112number=`wc -l "${tmplocation}"/Total_OS_X_10.11.2.txt | awk '{print $1}'`
-total10113number=`wc -l "${tmplocation}"/Total_OS_X_10.11.3.txt | awk '{print $1}'`
-total10114number=`wc -l "${tmplocation}"/Total_OS_X_10.11.4.txt | awk '{print $1}'`
-total10115number=`wc -l "${tmplocation}"/Total_OS_X_10.11.5.txt | awk '{print $1}'`
-total10116number=`wc -l "${tmplocation}"/Total_OS_X_10.11.6.txt | awk '{print $1}'`
-### OS X 10.12 Sierra
-total10120number=`wc -l "${tmplocation}"/Total_OS_X_10.12.0.txt | awk '{print $1}'`
-total10121number=`wc -l "${tmplocation}"/Total_OS_X_10.12.1.txt | awk '{print $1}'`
-
-## Output Darwin data.
-echo "A total of $totalosxnumber OS X devices hit the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10105number OS X Yosemite 10.10.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10110number OS X El Capitan 10.11.0/10.11.1 Devices [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10112number OS X El Capitan 10.11.2 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10113number OS X El Capitan 10.11.3 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10114number OS X El Capitan 10.11.4 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10115number OS X El Capitan 10.11.5 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10116number OS X El Capitan 10.11.6 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10120number OS X Sierra 10.12.0 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $total10121number OS X Sierra 10.12.1 Devices" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo 
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Stage VI: Apple Configurator 2
-## Anything containing the phrase "%Configurator" means it is Configurator 2 related. Read the merged log and output to new file
-egrep -o "(.(Configurator\S+))" "${tmplocation}"/URL_Log-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_AC2.txt
-
-## Look for "2.0" and output
-egrep -o "(\/(2.0))" "${tmplocation}"/Total_AC2.txt > "${tmplocation}"/Total_AC_2.0.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
-totalacnumber=`wc -l "${tmplocation}"/Total_AC2.txt | awk '{print $1}'`
-### Apple Configurator 2, 2.1, 2.2 and 2.2.1
-totalac200number=`wc -l "${tmplocation}"/Total_AC_2.0.txt | awk '{print $1}'`
-
-
-## Output Darwin data.
-echo "A total of $totalacnumber Applications were downloaded from Apple Configurator 2 devices, consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalac200number Applications downloaded from Apple Configurator 2.0/2.1/2.2/2.3 [Cannot distinguish between builds]" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo 
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Stage VII: Extract URL's from log file, output into file and remove duplicates.
-## Anything containing the phrase " http" means it is download related. Read the merged log and output to new file
-egrep -o "(\s(http\S+))" "${tmplocation}"/MergedLog-"${yesterday}".log | cut -d " " -f 2 > "${tmplocation}"/Total_URLs.txt
-
-## Look for "ipa" and output
-egrep -o "(ipa)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_IPAs.txt
-## Look for "zip" and output
-egrep -o "(zip)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Zips.txt
-## Look for "pkg" and output
-egrep -o "(pkg)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_PKGs.txt
-## Look for "epub" and output
-egrep -o "(epub)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Books.txt
-## Look for "ipsw" and output
-egrep -o "(ipsw)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_IPSWs.txt
-## Look for "register" and output
-egrep -o "(register)" "${tmplocation}"/Total_URLs.txt > "${tmplocation}"/Total_Server_Registers.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total numbers.
-totalurlnumber=`wc -l "${tmplocation}"/Total_URLs.txt | awk '{print $1}'`
-totalipanumber=`wc -l "${tmplocation}"/Total_IPAs.txt | awk '{print $1}'`
-totalzipnumber=`wc -l "${tmplocation}"/Total_Zips.txt | awk '{print $1}'`
-totalpkgnumber=`wc -l "${tmplocation}"/Total_PKGs.txt | awk '{print $1}'`
-totalipswnumber=`wc -l "${tmplocation}"/Total_IPSWs.txt | awk '{print $1}'`
-totalepubnumber=`wc -l "${tmplocation}"/Total_Books.txt | awk '{print $1}'`
-totalsregistersnumber=`wc -l "${tmplocation}"/Total_Server_Registers.txt | awk '{print $1}'`
-
-## Output data.
-echo "A total of $totalurlnumber files were downloaded from the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalepubnumber Books" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalipanumber iOS Apps" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalpkgnumber Mac Apps" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalzipnumber Zip files" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalipswnumber IPSW files" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $totalsregistersnumber Apple Server Registrations" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo 
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-## Load txt file, sort it and delete any duplicate URL's to get your unique URL number.
-cat "${tmplocation}"/Total_URLs.txt | sort | uniq > "${tmplocation}"/Unique_URLs.txt
-## Look for "epub" and output
-egrep -o "(epub)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_Books.txt
-## Look for "ipa" and output
-egrep -o "(ipa)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_IPAs.txt
-## Look for "pkg" and output
-egrep -o "(pkg)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_PKGs.txt
-## Look for "zip" and output
-egrep -o "(zip)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_Zips.txt
-## Look for "ipsw" and output
-egrep -o "(ipsw)" "${tmplocation}"/Unique_URLs.txt > "${tmplocation}"/Unique_IPSWs.txt
-
-## Use wc to count the lines from each file to give you a reasonable estimate of total unique numbers.
-uniqueurlnumber=`wc -l "${tmplocation}"/Unique_URLs.txt | awk '{print $1}'`
-uniqueepubnumber=`wc -l "${tmplocation}"/Unique_Books.txt | awk '{print $1}'`
-uniqueipanumber=`wc -l "${tmplocation}"/Unique_IPAs.txt | awk '{print $1}'`
-uniquepkgnumber=`wc -l "${tmplocation}"/Unique_PKGs.txt | awk '{print $1}'`
-uniquezipnumber=`wc -l "${tmplocation}"/Unique_Zips.txt | awk '{print $1}'`
-uniqueipswnumber=`wc -l "${tmplocation}"/Unique_IPSWs.txt | awk '{print $1}'`
-
-## Output data.
-echo "$uniqueurlnumber Unique files were downloaded from the Caching Server yesterday consisting of:" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniqueepubnumber Unique Books" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniqueipanumber Unique iOS Apps" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniquepkgnumber Unique Mac Apps" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniquezipnumber Unique Zip files" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo "  $uniqueipswnumber Unique IPSW files" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Add script/report version
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo  "Cacher version: $version" 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-echo  " " 2>&1 | tee -a "${tmplocation}"/AlertInfo.txt
-
-# Stage IX: Server Alert
-# iconv -f US-ASCII -t UTF-8 "${tmplocation}"/AlertInfo.txt > "${tmplocation}"/AlertInfoUTF.txt
-# Replaces prefixed spaces with &nbsp; + 1 additional space to match previous version(s) of Cacher
-sed -i -e 's/^     /\&nbsp\;\&nbsp\;\&nbsp\;\&nbsp\;\&nbsp\; /' "${tmplocation}"/AlertInfo.txt
-sed -i -e 's/^    /\&nbsp\;\&nbsp\;\&nbsp\;\&nbsp\; /' "${tmplocation}"/AlertInfo.txt
-sed -i -e 's/^   /\&nbsp\;\&nbsp\;\&nbsp\; /' "${tmplocation}"/AlertInfo.txt
-sed -i -e 's/^  /\&nbsp\;\&nbsp\; /' "${tmplocation}"/AlertInfo.txt
-sed -i -e 's/^ /\&nbsp\; /' "${tmplocation}"/AlertInfo.txt
-# Send alert through Server.app
-finalalert=`echo | grep "" "${tmplocation}"/AlertInfo.txt`
-/Applications/Server.app/Contents/ServerRoot/usr/sbin/server postAlert CustomAlert Common subject "Caching Server Data: $yesterday" message "$finalalert" <<<""
-
-# Stage X: Delete tmp files (the easy part!)
-rm -rf $tmplocation
+#!/usr/bin/python
+
+from datetime import date, timedelta
+from distutils.version import LooseVersion
+import glob
+import json
+import logging
+import optparse
+import os
+import plistlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib2
+
+"""Cacher rewritten in Python.
+Inspired by Michael Lynn https://gist.github.com/pudquick/ffdbdb52ae6960ca8e55
+
+This script will process Caching Server Debug Logs.
+You can output this data to stdout, send it to the Apple email alert mechanism,
+or send to a slack channel.
+
+Slack section adapted from another one of my tools (APInfo).
+https://github.com/erikng/scripts/tree/master/APInfo
+
+Author: Erik Gomez
+Last Updated: 01-04-2017
+"""
+version = '3.0'
+
+
+def cacher(lines, targetDate, friendlyNames):
+    # Basically run through all the lines a single time and collect all the
+    # relevant data to slice, do stats with, etc.
+    sizeLog = []
+    AC2Log = []
+    IPLog = []
+    OSLog = []
+    osVersionLog = []
+    iOSModelLog = []
+    iOSModelOnlyLog = []
+    fileTypeLog = []
+    fileTypeUniqueLog = []
+    urlLog = []
+    urlUniqueLog = []
+    deviceNumberLog = []
+    finalOutput = []
+    FriendlyLog = []
+    macOSFamilyLog = []
+    macOSDeviceNumber = []
+    iOSFamilyLog = []
+    iOSDeviceNumber = []
+    AppleTVNumberLog = []
+    iPadNumberLog = []
+    iPhoneNumberLog = []
+    iPodNumberLog = []
+    # Friendly Darwin versions for macOS. This allows us to dynamically add
+    # the macOS version (for the alert), while dynamically looping through the
+    # logs.
+    friendlyDarwin = {
+        '16.4.0': '10.12.3',
+        '16.3.0': '10.12.2',
+        '16.1.0': '10.12.1',
+        '16.0.0': '10.12.0',
+        '10.12': '10.12.0',  # match 10.12 to 10.12.0 for consistency
+        '15.6.0': '10.11.6',
+        '15.5.0': '10.11.5',
+        '15.4.0': '10.11.4',
+        '15.3.0': '10.11.3',
+        '15.2.0': '10.11.2',
+        '15.0.0': '10.11.0/1',
+        '14.5.0': '10.10.5',
+        '14.4.0': '10.10.4',
+        '14.3.0': '10.10.3',
+        '14.1.1': '10.12.2',
+        '14.1.0': '10.10.2',
+        '14.0.0': '10.10.0/1',
+    }
+    # Friendly Models of known models. This allows us to dynamically add the
+    # names to each model (for the alert), while dynamically looping through
+    # the logs.
+    friendlyModels = {
+        'AppleTV3,1': '3rd Generation Apple TVs',
+        'AppleTV3,2': '4th Generation Apple TVs',
+        'AppleTV5,3': '5th Generation Apple TVs',
+        'iPhone3,1': 'iPhone 4 [GSM]',
+        'iPhone3,2': 'iPhone 4 [GSM 2012]',
+        'iPhone3,3': 'iPhone 4 [CDMA]',
+        'iPhone4,1': 'iPhone 4S',
+        'iPhone5,1': 'iPhone 5 [GSM]',
+        'iPhone5,2': 'iPhone 5 [CDMA]',
+        'iPhone5,3': 'iPhone 5C',
+        'iPhone5,4': 'iPhone 5C [Global]',
+        'iPhone6,1': 'iPhone 5S',
+        'iPhone6,2': 'iPhone 5S [China Model]',
+        'iPhone7,1': 'iPhone 6 Plus',
+        'iPhone7,2': 'iPhone 6',
+        'iPhone8,1': 'iPhone 6S',
+        'iPhone8,2': 'iPhone 6S Plus',
+        'iPhone8,4': 'iPhone SE',
+        'iPhone9,1': 'iPhone 7 [Global]',
+        'iPhone9,2': 'iPhone 7 Plus [Global]',
+        'iPhone9,3': 'iPhone 7 [GSM]',
+        'iPhone9,4': 'iPhone 7 Plus [GSM]',
+        'iPad2,1': 'iPad 2nd Generation [Wifi]',
+        'iPad2,2': 'iPad 2nd Generation [Wifi + GSM]',
+        'iPad2,3': 'iPad 2nd Generation [Wifi + CDMA]',
+        'iPad2,4': 'iPad 2nd Generation [M2012 Wifi Revision]',
+        'iPad2,5': 'iPad Mini 1st Generation [Wifi]',
+        'iPad2,6': 'iPad Mini 1st Generation [Wifi + GSM]',
+        'iPad2,7': 'iPad Mini 1st Generation [Wifi + CDMA]',
+        'iPad3,1': 'iPad 3rd Generation [Wifi]',
+        'iPad3,2': 'iPad 3rd Generation [Wifi + GSM]',
+        'iPad3,3': 'iPad 3rd Generation [Wifi + CDMA]',
+        'iPad3,4': 'iPad 4th Generation [Wifi]',
+        'iPad3,5': 'iPad 4th Generation [Wifi + GSM]',
+        'iPad3,6': 'iPad 4th Generation [Wifi + CDMA]',
+        'iPad4,1': 'iPad Air 1st Generation [Wifi]',
+        'iPad4,2': 'iPad Air 1st Generation [Wifi + Cellular]',
+        'iPad4,3': 'iPad Air 1st Generation [China Model]',
+        'iPad4,4': 'iPad Mini 2nd Generation [Wifi]',
+        'iPad4,5': 'iPad Mini 2nd Generation [Wifi + Cellular]',
+        'iPad4,6': 'iPad Mini 2nd Generation [China Model]',
+        'iPad4,7': 'iPad Mini 3rd Generation [Wifi]',
+        'iPad4,8': 'iPad Mini 3rd Generation [Wifi + Cellular]',
+        'iPad4,9': 'iPad Mini 3rd Generation [China Model]',
+        'iPad5,1': 'iPad Mini 4th Generation [Wifi]',
+        'iPad5,2': 'iPad Mini 4th Generation [Wifi + Cellular]',
+        'iPad5,3': 'iPad Air 2nd Generation [Wifi]',
+        'iPad5,4': 'iPad Air 2nd Generation [Wifi + Cellular]',
+        'iPad6,3': 'iPad Pro 9.7 Inch 1st Generation [Wifi]',
+        'iPad6,4': 'iPad Pro 9.7 Inch 1st Generation [Wifi + Cellular]',
+        'iPad6,7': 'iPad Pro 12.9 Inch 1st Generation [Wifi]',
+        'iPad6,8': 'iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]',
+        'iPod5,1': 'iPod Touch 5th Generation',
+        'iPod7,1': 'iPod Touch 6th Generation'
+    }
+    for x in lines:
+        # If there aren't at least 3 pieces somehow, they'll get filled in
+        # with blanks
+        datestr, timestr, logmsg = (x.split(' ', 2) + ['', '', ''])[:3]
+        if datestr == targetDate:
+            # Only do work if the string is on the date we care about
+            # try:
+                linesplit = str.split(logmsg)
+                # split the logmsg line (by spaces) so I can hardcode some
+                # calls. Fragile (could break with a Server update) but it meh.
+
+                # Beginning of Server bandwidth section
+                #
+                #
+                # This is a very fragile part of the script, but for now, I
+                # don't care. Split the logmsg and pull the data points I need
+                # from exact split points. This could break at any time.
+                if 'start:' in logmsg:
+                    clientbw = linesplit[3]
+                    clientbwtype = linesplit[4]
+                    applebw = linesplit[8]
+                    applebwtype = linesplit[9]
+                    otherbw = linesplit[13]
+                    otherbwtype = linesplit[14]
+                    sizeLog.append('%s/%s/%s/%s/%s/%s' % (
+                        clientbw, clientbwtype, applebw, applebwtype, otherbw,
+                        otherbwtype))
+                # Beginning of Server downloads section
+                #
+                #
+                if 'Received GET request ' in logmsg:
+                    # Beginning of IP section
+                    #
+                    #
+                    # Ex: '149.166.73.137:56833'. Split 6th string at ':' and
+                    # pull only pull first value.
+                    ip = linesplit[5].split(":")[0]
+                    IPLog.append(ip)
+                    #
+                    #
+                    # End of IP section
+
+                    # Beginning of URL section
+                    #
+                    #
+                    # The URL is always at the end so take the split line and
+                    # pull its value.
+                    URL = linesplit[-1]
+                    urlLog.append(URL)
+                    #
+                    #
+                    # End of URL section
+
+                    # Beginning of OS Family, OS Version and Device section
+                    #
+                    #
+                    # Example: 'Darwin/15.0.0', 'iOS/10.0.2' or 'OS X 10.12.0'
+                    # Replace Look for iOS, Darwin or OS X. If OS X is found,
+                    # Add 'macOS/' to force the consistency and split the
+                    # string at '/'. This allows us to use 'macOS/10.12.2' for
+                    # both osFamily (Ex: macOS) and osVersion (Ex: 10.12.2).
+                    osFamily = re.match(
+                        r'.+? ((iOS|Darwin|OS X)[/ ](([0-9]+\.?){1,}))',
+                        x).group(1).replace('OS X ', 'macOS/').split('/')[0]
+                    osVersion = re.match(
+                        r'.+? ((iOS|Darwin|OS X)[/ ](([0-9]+\.?){1,}))',
+                        x).group(1).replace('OS X ', 'macOS/').split('/')[1]
+                    # If 'Darwin' in the name, replace to 'macOS' so our future
+                    # counts will be accurate.
+                    if osFamily == 'Darwin':
+                        osFamily = 'macOS'
+                    # Loop through the friendlyDarwin key/value pairs and if
+                    # osVersion is equal to the key (Ex: 16.3.0) replace it
+                    # with its value (Ex: 10.12.2). This is also a fix for the
+                    # count. Yay for coding in a bubble!
+                    for k, v in friendlyDarwin.items():
+                        if k == osVersion:
+                            osVersion = v
+
+                    # The iOS family is more fun, in that Caching Server logs
+                    # the model identifier.
+                    if osFamily == 'iOS':
+                        # Ex: 'model/iPhone7,2'.
+                        iOSModel = re.match(
+                            r'.+? model/([^ ]+?[0-9]+,?[0-9])?', x)
+                        # Since the regular expression is now two goups, only
+                        # take the date from the 2nd group.
+                        # Write the osVersion/osFamily data to iOSModelLog,
+                        # iOSModelOnlyLog and OSLog.
+                        iOSModelLog.append((osVersion, iOSModel.group(1)))
+                        iOSModelOnlyLog.append(iOSModel.group(1))
+                        OSLog.append((osVersion, osFamily))
+                    else:
+                        # Write the osVersion/osFamily data to OSLog.
+                        OSLog.append((osVersion, osFamily))
+
+                    # if 'model/AppleTV' in logmsg:
+                    # I think I still need to do this section but I can't
+                    # remember.
+                    #
+                    #
+                    # End of OS Family, OS Version and Device section
+
+                    # Beginning of File Type section
+                    #
+                    #
+                    # Regular Expression Part. Using the URL (split early),
+                    # Look for the recognized filetypes (.pkg, .ipa, .ipsw,
+                    # .zip and .epub). Ex:
+                    # 1. '/a-09f98d6971/pre-thinned756.thinned.signed.dpkg.ipa'
+                    # 2. '/031-8/com_apple_MobileAsset_CoreSuggestion/6c93.zip'
+                    # 3. '[icloud:hvRq3yMBV7JO9hUBRo2p]'
+                    if re.match(r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', URL):
+                        fileType = re.match(
+                            r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', URL)
+                        fileTypeLog.append(fileType.group(1))
+                    # Notice Example 3 posted above. Those are the odd URLs for
+                    # Personal iCloud data. Since it has no discernable suffix,
+                    # log a value of 'personal icloud'. :shrug:
+                    elif re.match(r'.+(\icloud)', URL):
+                        fileType = re.match(r'.+(\icloud)', URL)
+                        fileTypeLog.append('personal icloud')
+                    #
+                    #
+                    # End of File Type section
+                #
+                #
+                # End of Server downloads section
+
+            # except:
+                # print x
+                # raise Exception("Funky line - check it out")
+    # Beginning of the final output.
+    #
+    #
+    # Append to a new list. This then allows us to call it whenever we need.
+    # We can then put this into the Server Alert, stdout, Slack, etc.
+    finalOutput.append(
+        'Cacher has retrieved the following stats for %s:' % targetDate)
+    finalOutput.append('')
+    # Bandwidth served to clients
+    # There has to be a better way to do this but for v3.0, this works.
+    # This is the worst part of the script/least dynamic. :(
+    # This also does not take into account reboots in the middle of the day.
+    # If someone can figure it out and rewrite this part, kudos.
+    bwtypes = ['Terabytes', 'Gigabytes', 'Megabytes', 'bytes']
+    # Bail here since there aren't any bandwidth stats.
+    if not sizeLog:
+        print 'Cacher did not retrieve any stats for %s' % targetDate
+        sys.exit(1)
+    else:
+        firstotalbw = sizeLog[0].split("/")
+        lasttotalbw = sizeLog[-1].split("/")
+
+    if firstotalbw[1] == 'TB':
+        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1099511627776)
+    elif firstotalbw[1] == 'GB':
+        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1073741824)
+    elif firstotalbw[1] == 'MB':
+        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1048576)
+    elif firstotalbw[1] == 'bytes':
+        firstotalbw[0] = float(firstotalbw[0])
+
+    if lasttotalbw[1] == 'TB':
+        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1099511627776)
+    elif lasttotalbw[1] == 'GB':
+        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1073741824)
+    elif lasttotalbw[1] == 'MB':
+        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1048576)
+    elif lasttotalbw[1] == 'bytes':
+        lasttotalbw[0] = float(lasttotalbw[0])
+
+    if firstotalbw[3] == 'TB':
+        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1099511627776)
+    elif firstotalbw[3] == 'GB':
+        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1073741824)
+    elif firstotalbw[3] == 'MB':
+        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1048576)
+    elif firstotalbw[3] == 'bytes':
+        firstotalbw[2] = int(firstotalbw[2])
+
+    if lasttotalbw[3] == 'TB':
+        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1099511627776)
+    elif lasttotalbw[3] == 'GB':
+        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1073741824)
+    elif firstotalbw[3] == 'MB':
+        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1048576)
+    elif firstotalbw[3] == 'bytes':
+        lasttotalbw[2] = float(lasttotalbw[2])
+
+    if firstotalbw[5] == 'TB':
+        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1099511627776)
+    elif firstotalbw[5] == 'GB':
+        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1073741824)
+    elif firstotalbw[5] == 'MB':
+        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1048576)
+    elif firstotalbw[5] == 'bytes':
+        firstotalbw[4] = int(firstotalbw[4])
+
+    if lasttotalbw[5] == 'TB':
+        lasttotalbw[4] = "%.2f" % (float(lasttotalbw[4]) * 1099511627776)
+    elif lasttotalbw[5] == 'GB':
+        lasttotalbw[4] = "%.2f" % (float(lasttotalbw[4]) * 1073741824)
+    elif firstotalbw[5] == 'MB':
+        lasttotalbw[4] = float(lasttotalbw[4]) * 1048576
+    elif firstotalbw[5] == 'bytes':
+        lasttotalbw[4] = float(lasttotalbw[4])
+
+    totalclientbw = "%.2f" % (
+        (float(lasttotalbw[0]) - float(firstotalbw[0])))
+    if float(totalclientbw) >= 1099511627776:
+        totalclientbw = "%.2f" % (float(totalclientbw) / 1099511627776)
+        totalclientbwtype = bwtypes[0]
+    elif (float(totalclientbw) < 1099511627776) and (
+            float(totalclientbw) >= 1073741824):
+        totalclientbw = "%.2f" % (float(totalclientbw) / 1073741824)
+        totalclientbwtype = bwtypes[1]
+    elif (float(totalclientbw) < 1073741824) and (
+            float(totalclientbw) >= 1048576):
+        totalclientbw = "%.2f" % (float(totalclientbw) / 1048576)
+        totalclientbwtype = bwtypes[2]
+    elif float(totalclientbw) < 1048576:
+        totalclientbwtype = bwtypes[3]
+
+    totalapplebw = "%.2f" % (
+        (float(lasttotalbw[2]) - float(firstotalbw[2])))
+    if float(totalapplebw) >= 1099511627776:
+        totalapplebw = "%.2f" % (float(totalapplebw) / 1099511627776)
+        totalapplebwtype = bwtypes[0]
+    elif (float(totalapplebw) < 1099511627776) and (
+            float(totalapplebw) >= 1073741824):
+        totalapplebw = "%.2f" % (float(totalapplebw) / 1073741824)
+        totalapplebwtype = bwtypes[1]
+    elif (float(totalapplebw) < 1073741824) and (
+            float(totalapplebw) >= 1048576):
+        totalapplebw = "%.2f" % (float(totalapplebw) / 1048576)
+        totalapplebwtype = bwtypes[2]
+    elif float(totalapplebw) < 1048576:
+        totalapplebwtype = bwtypes[3]
+
+    totalcachingbw = "%.2f" % (
+        (float(lasttotalbw[4]) - float(firstotalbw[4])))
+    if float(totalcachingbw) >= 1099511627776:
+        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1099511627776)
+        totalcachingbwtype = bwtypes[1]
+    elif (float(totalcachingbw) < 1099511627776) and (
+            float(totalcachingbw) >= 1073741824):
+        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1073741824)
+        totalcachingbwtype = bwtypes[1]
+    elif (float(totalcachingbw) < 1073741824) and (
+            float(totalcachingbw) >= 1048576):
+        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1048576)
+        totalcachingbwtype = bwtypes[2]
+    elif float(totalcachingbw) < 1048576:
+        totalcachingbwtype = bwtypes[3]
+
+    finalOutput.append(
+        '%s %s of bandwith served to client devices.' % (
+            totalclientbw, totalclientbwtype))
+    finalOutput.append(
+        ' %s %s of bandwith requested from Apple' % (
+            totalapplebw, totalapplebwtype))
+    finalOutput.append(
+        ' %s %s of bandwith requested from other Caching Servers' % (
+            totalcachingbw, totalcachingbwtype))
+    finalOutput.append('')
+
+    # Total Numbers of IP addresses
+    finalOutput.append(
+        '%s IP Addresses hit the Caching Server yesterday consisting'
+        ' of:' % len(IPLog))
+    finalOutput.append('  %s Unique IP Addresses.' % len(set(IPLog)))
+    finalOutput.append('')
+
+    # Total Number of iOS devices
+    finalOutput.append(
+        'A total of %s iOS downloads were requested from the Caching Server'
+        ' yesterday consisting of:' % len(iOSModelOnlyLog))
+
+    # Sort the list by device type (AppleTV, iPad, iPhone, iPod). If we aren't
+    # using the friendly names, we use the standard sorting, but if we use the
+    # friendly names, we will sort the list at the very end.
+    if friendlyNames:
+        # Friendly Name Sorting:
+        # In order to sort the friendly names properly, we create a new list,
+        # counting the amount of devices and swapping the key/value pairs from
+        # the friendly names. Since we have to sort by friendly name, we create
+        # a new list based off the following: modeltype/numberofdevices. We
+        # then split this output on the "/" which gives us the number of the
+        # number of devices and the modeltype in proper order.
+        # Example:
+        # iPhone3,1 becomes iPhone 4 [GSM]/numberofDevices which is then sorted
+        # and finally split.
+        for x in set(iOSModelOnlyLog):
+            numberofDevices = iOSModelOnlyLog.count(x)
+            modeltype = x
+            for k, v in friendlyModels.items():
+                if k == modeltype:
+                    modeltype = v
+            FriendlyLog.append('%s/%s' % (modeltype, numberofDevices))
+            if 'Apple TV' in modeltype:
+                AppleTVNumberLog.append('%s' % numberofDevices)
+            elif 'iPad' in modeltype:
+                iPadNumberLog.append('%s' % numberofDevices)
+            elif 'iPhone' in modeltype:
+                iPhoneNumberLog.append('%s' % numberofDevices)
+            elif 'iPod' in modeltype:
+                iPodNumberLog.append('%s' % numberofDevices)
+        # Force conversion of lists to int
+        AppleTVNumberLog = [int(i) for i in AppleTVNumberLog]
+        iPadNumberLog = [int(i) for i in iPadNumberLog]
+        iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
+        iPodNumberLog = [int(i) for i in iPodNumberLog]
+        # Output
+        finalOutput.append(
+            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        finalOutput.append(
+            ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        finalOutput.append(
+            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        finalOutput.append(
+            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        for x in sorted(set(FriendlyLog)):
+            numberofDevices = x.split('/')[1]
+            modeltype = x.split('/')[0]
+            finalOutput.append('  %s %s' % (numberofDevices, modeltype))
+    else:
+        # Non Friendly Name Sorting:
+        # This one is easier than friendly names as it's alphabetized by
+        # sorted(). Count the devices and prefix it on the output.
+        for x in sorted(set(iOSModelOnlyLog)):
+            numberofDevices = iOSModelOnlyLog.count(x)
+            modeltype = x
+            if 'AppleTV' in modeltype:
+                AppleTVNumberLog.append('%s' % numberofDevices)
+            elif 'iPad' in modeltype:
+                iPadNumberLog.append('%s' % numberofDevices)
+            elif 'iPhone' in modeltype:
+                iPhoneNumberLog.append('%s' % numberofDevices)
+            elif 'iPod' in modeltype:
+                iPodNumberLog.append('%s' % numberofDevices)
+        # Force conversion of lists to int
+        AppleTVNumberLog = [int(i) for i in AppleTVNumberLog]
+        iPadNumberLog = [int(i) for i in iPadNumberLog]
+        iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
+        iPodNumberLog = [int(i) for i in iPodNumberLog]
+        # Output
+        finalOutput.append(
+            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        finalOutput.append(
+            ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        finalOutput.append(
+            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        finalOutput.append(
+            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        for x in sorted(set(iOSModelOnlyLog)):
+            numberofDevices = iOSModelOnlyLog.count(x)
+            modeltype = x
+            finalOutput.append(' %s %s' % (numberofDevices, modeltype))
+
+    finalOutput.append('')
+
+    # Total Number of OS Versions
+    finalOutput.append(
+        'A total of %s OS downloads were requested from the Caching Server'
+        ' yesterday consisting of:' % len(OSLog))
+    for x in sorted(set(OSLog)):
+        numberofVersions = OSLog.count(x)
+        osversion = x[0]
+        osfamily = x[1]
+        if osfamily == 'macOS':
+            macOSFamilyLog.append(
+                '%s/%s' % (osfamily + ' ' + osversion, numberofVersions))
+            macOSDeviceNumber.append(numberofVersions)
+        else:
+            iOSFamilyLog.append(
+                '%s/%s' % (osfamily + ' ' + osversion, numberofVersions))
+            iOSDeviceNumber.append(numberofVersions)
+
+    # Sort the iOS versions with LooseVersion. StrictVersion fails since I am
+    # cheating and adding /devicecount to the version. (Ex. iOS 10.2/2000)
+    finalOutput.append(' %s iOS downloads:' % sum(iOSDeviceNumber))
+    for x in sorted(set(iOSFamilyLog), key=LooseVersion):
+        numberofVersions = x.split('/')[1]
+        modeltype = x.split('/')[0]
+        finalOutput.append('  %s %s' % (numberofVersions, modeltype))
+
+    # Sort the macOS versions normally, since they all start with 10.
+    finalOutput.append(' %s macOS downloads:' % sum(macOSDeviceNumber))
+    for x in sorted(set(macOSFamilyLog)):
+        numberofVersions = x.split('/')[1]
+        modeltype = x.split('/')[0]
+        finalOutput.append('  %s %s' % (numberofVersions, modeltype))
+    finalOutput.append('')
+
+    # Total Number of Apple Configurator 2 files.
+    # I need logs with Apple Configurator 2 references so I can rewrite this.
+    # Since you can't disintinguish between the version of AC2, I'm removing
+    # the secondary line I had in the shell version.
+    finalOutput.append('A total of %s Applications were downloaded from Apple'
+                       ' Configurator 2 devices' % len(AC2Log))
+    finalOutput.append('')
+
+    # Total Number of filetypes downloaded and their respect numbers
+    finalOutput.append('A total of %s files were downloaded from the Caching'
+                       ' Server yesterday consisting of:' % len(fileTypeLog))
+    for x in set(fileTypeLog):
+        numberofFiles = fileTypeLog.count(x)
+        finalOutput.append(' %s %s files' % (numberofFiles, x))
+    finalOutput.append('')
+
+    # Total Number of unique filetypes downloaded and their respect numbers
+    urlUniqueLog = set(urlLog)
+    finalOutput.append('A total of %s unique files were downloaded from the'
+                       ' Caching Server yesterday consisting'
+                       ' of:' % len(urlUniqueLog))
+    # Same logic taken from "File Type Section" so I'm not documenting it.
+    for x in urlUniqueLog:
+        if re.match(r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', x):
+            fileType = re.match(
+                r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', x)
+            fileTypeUniqueLog.append(fileType.group(1))
+        elif re.match(r'.+(\icloud)', URL):
+            fileType = re.match(r'.+(\icloud)', x)
+            fileTypeUniqueLog.append('personal icloud')
+    for x in set(sorted(fileTypeUniqueLog)):
+        numberofFiles = fileTypeUniqueLog.count(x)
+        finalOutput.append(' %s %s files' % (numberofFiles, x))
+    finalOutput.append('')
+    # Add Cacher version
+    finalOutput.append('Cacher version: %s' % version)
+    finalOutput.append('Uptime: %s' % get_uptime())
+
+    #
+    #
+    # End of the final output.
+    return finalOutput
+    # print("\n".join(finalOutput))
+
+
+def get_serverversion():
+    try:
+        serverversion = '/Applications/Server.app/Contents/version.plist'
+        plist = plistlib.readPlist(serverversion)
+        return plist['CFBundleShortVersionString']
+    except Exception:
+        return None
+
+
+def get_uptime():
+    try:
+        cmd = ['/usr/bin/uptime']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        output, err = proc.communicate()
+        splitout = str.split(output)
+        uptimeamount = splitout[2]
+        uptimetype = splitout[3].replace(',', '')
+        return '%s %s' % (uptimeamount, uptimetype)
+    except Exception:
+        return None
+
+
+def send_serveralert(targetDate, cacherdata):
+    try:
+        # Change to a directory to remove shell error
+        os.chdir('/private/tmp')
+        # Mehhhhhhhhhhhhhh
+        cmd = ['/Applications/Server.app/Contents/ServerRoot/usr/sbin/server '
+               'postAlert CustomAlert Common subject ' + '"'
+               'Caching Server Data: ' + targetDate + '"' + ' message '
+               '"' + cacherdata + '"<<<""']
+        subprocess.check_call(cmd, shell=True)
+    except Exception:
+        return None
+
+
+def configureserver():
+    try:
+        cmd = [
+            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
+            'admin', 'settings', 'caching:LogClientIdentity = yes']
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        output, err = proc.communicate()
+        return output.rstrip()
+    except Exception:
+        return None
+
+
+def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
+                  slackwebhook):
+    # Server App Icon DL
+    url = 'https://itunes.apple.com/lookup?id=883878097'
+    try:
+        request = urllib2.urlopen(url)
+        jsondata = json.loads(request.read())
+        iconurl = jsondata['results'][0]['artworkUrl100']
+    except:
+        # hardcode icon url in case it fails.
+        iconurl = 'http://is5.mzstatic.com/image/thumb/Purple122/v4/b9/e8/c4' \
+            '/b9e8c4b9-ce9c-174a-c1a8-d0ad0fc21da9/source/100x100bb.png'
+    # Slack payload
+    payload = {
+        "channel": slackchannel,
+        "username": slackusername,
+        "icon_url": iconurl,
+        "attachments": [
+            {
+                'fields': [
+                    {
+                        'title': 'Caching Server Data ' + targetDate,
+                        'value': cacherdata
+                    }
+                ]
+            }
+        ]
+    }
+    try:
+        cmd = ['/usr/bin/curl', '-X', 'POST', '--data-urlencode',
+               'payload=' + json.dumps(payload), slackwebhook]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        output, err = proc.communicate()
+    except Exception:
+        print 'Failed to send message to Slack'
+
+
+def main():
+    # Check for macOS Server 5.2 or higher. Use LooseVersion just in case.
+    if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
+        pass
+    else:
+        print "Server version is %s and not compatible" % serverversion()
+        sys.exit(1)
+
+    # Options
+    usage = '%prog [options]'
+    o = optparse.OptionParser(usage=usage)
+    o.add_option('--targetdate',
+                 help=('Optional: Date to parse. Example: 2017-01-15.'))
+    o.add_option('--logpath',
+                 help=('Optional: Caching Log Path. Defaults to: '
+                       '/Library/Server/Caching/Logs'))
+    o.add_option('--deviceids',
+                 help='Optional: Use Device IDs (Ex: iPhone7,2). Defaults'
+                 ' to: False',
+                 action='store_true')
+    o.add_option('--nostdout',
+                 help='Optional: Do not print to standard out',
+                 action='store_true')
+    o.add_option('--configureserver',
+                 help='Optional: Configure Server to log Client Data',
+                 action='store_true')
+    o.add_option('--serveralert',
+                 help='Optional: Send Server Alert',
+                 action='store_true')
+    o.add_option("--slackalert", action="store_true", default=False,
+                 help=("Optional: Use Slack"))
+    o.add_option("--slackwebhook", default=None,
+                 help=("Optional: Slack Webhook URL. Requires Slack Option."))
+    o.add_option("--slackusername", default=None,
+                 help=("Optional: Slack username. Requires Slack Option."))
+    o.add_option("--slackchannel", default=None,
+                 help=("Optional: Slack channel. Requires Slack Option."))
+
+    opts, args = o.parse_args()
+    # Configure Server
+    if opts.configureserver:
+        configureServer = True
+    else:
+        configureServer = False
+    if configureServer:
+        if os.getuid() != 0:
+            print 'Did not configure Caching Server - requires root'
+            sys.exit(1)
+        else:
+            print 'Caching Server settings are now: ' + configureserver()
+            sys.exit(1)
+
+    if opts.targetdate:
+        targetDate = opts.targetdate
+    else:
+        targetDate = date.today() - timedelta(1)
+    if opts.logpath:
+        logPath = opts.logpath
+    else:
+        logPath = '/Library/Server/Caching/Logs'
+    if opts.deviceids:
+        friendlyNames = False
+    else:
+        friendlyNames = True
+    if opts.nostdout:
+        stdOut = False
+    else:
+        stdOut = True
+    if opts.serveralert:
+        serverAlert = True
+    else:
+        serverAlert = False
+    if opts.slackalert:
+        slackAlert = True
+    else:
+        slackAlert = False
+    slackalert = opts.slackalert
+    slackwebhook = opts.slackwebhook
+    if opts.slackusername:
+        slackusername = opts.slackusername
+    else:
+        slackusername = 'Cacher'
+    slackchannel = opts.slackchannel
+
+    # Check if log files exist and if not, bail. Try to delete .DS_Store files
+    # just in case they exist from the GUI. Chances are we can delete this
+    # because we are either running as root or the same user that created it.
+    try:
+        os.remove(os.path.join(logPath, '.DS_Store'))
+    except:
+        pass
+    if not os.listdir(logPath):
+        print 'Cacher did not detect log files in %s' % logPath
+        sys.exit(1)
+
+    # Make temporary directory
+    tmpDir = tempfile.mkdtemp()
+
+    # Clone the contents of serverlogs over into the 'cachinglogs' subdirectory
+    tmpLogs = os.path.join(tmpDir, 'cachinglogs')
+    shutil.copytree(logPath, tmpLogs)
+
+    # Expand any .bz files in the directory (Server 4.1+)
+    os.chdir(tmpLogs)
+    for bzLog in glob.glob(os.path.join(tmpLogs, '*.bz2')):
+        result = subprocess.check_call(["bunzip2", bzLog])
+
+    # Now combine all .log files in the destination into a temp file that's
+    # removed when python exits
+    rawLog = tempfile.TemporaryFile()
+    for anyLog in glob.glob(os.path.join(tmpLogs, '*.log')):
+        with open(anyLog, 'rb') as f:
+            shutil.copyfileobj(f, rawLog)
+
+    # Skip back to the beginning of our newly concatenated log
+    rawLog.seek(0)
+
+    # Purge temporary directory since it's now in memory.
+    shutil.rmtree(tmpDir)
+
+    # Run the function that does most of the work.
+    cacherdata = cacher(rawLog.readlines(), targetDate, friendlyNames)
+    # Output conditionals
+    if stdOut:
+        print("\n".join(cacherdata))
+    if slackAlert:
+        print ''
+    if serverAlert:
+        if os.getuid() != 0:
+            print 'Did not send serverAlert - requires root'
+        else:
+            send_serveralert(targetDate, "\n".join(cacherdata))
+    if slackalert is True:
+        post_to_slack(targetDate, "\n".join(cacherdata), slackchannel,
+                      slackusername, slackwebhook)
+
+
+if __name__ == '__main__':
+    main()
