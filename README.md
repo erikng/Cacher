@@ -123,11 +123,12 @@ Cacher --slackalert \
 ```
 
 ## Screenshots
-Slack Small
+
+### Slack Small
 ![Cacher Slack Example Small](/images/CacherSlack_Small.png?raw=true)
 
-Slack Large
+### Slack Large
 ![Cacher Slack Example Large](/images/CacherSlack_Small.png?raw=true)
 
-Original Server Alert
+### Original Server Alert
 ![Cacher Server Alert Example](/images/CacherServerAlert.png?raw=true)
