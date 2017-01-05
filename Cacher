@@ -510,7 +510,7 @@ def cacher(lines, targetDate, friendlyNames):
         for x in sorted(set(iOSModelOnlyLog)):
             numberofDevices = iOSModelOnlyLog.count(x)
             modeltype = x
-            finalOutput.append(' %s %s' % (numberofDevices, modeltype))
+            finalOutput.append('  %s %s' % (numberofDevices, modeltype))
 
     finalOutput.append('')
 
