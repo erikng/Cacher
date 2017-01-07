@@ -29,6 +29,32 @@ Cacher currently supports Server 5.2 and higher.
 - For Server 4 please see [this commit](https://github.com/erikng/Cacher/commit/17903d2dd29886c0dfc16054ae39b89f25581f79))
 - For Server 5-5.1 please see [this commit](https://github.com/erikng/Cacher/commit/57ea9c3c80c17bb29d4deb89cb07a2ae841613d9)
 
+## Usage
+```python
+Usage: Cacher [options]
+
+Options:
+  -h, --help            show this help message and exit
+  --targetdate=TARGETDATE
+                        Optional: Date to parse. Example: 2017-01-15.
+  --logpath=LOGPATH     Optional: Caching Log Path. Defaults to:
+                        /Library/Server/Caching/Logs
+  --deviceids           Optional: Use Device IDs (Ex: iPhone7,2). Defaults to:
+                        False
+  --nostdout            Optional: Do not print to standard out
+  --configureserver     Optional: Configure Server to log Client Data
+  --serveralert         Optional: Send Server Alert
+  --slackalert          Optional: Use Slack
+  --slackwebhook=SLACKWEBHOOK
+                        Optional: Slack Webhook URL. Requires Slack Option.
+  --slackusername=SLACKUSERNAME
+                        Optional: Slack username. Defaults to Cacher.Requires
+                        Slack Option.
+  --slackchannel=SLACKCHANNEL
+                        Optional: Slack channel. Can be username or channel
+                        Ex. #channel or @username. Requires Slack Option.
+```
+
 ## Optional features
 The following are optional features:
 
