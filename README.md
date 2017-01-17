@@ -111,9 +111,9 @@ A total of 3513 iOS downloads were requested from the Caching Server yesterday c
 ```
 
 ### No Standard output
-By default, Cacher will print the results to standard out. To skip this use the `--notstdout` option.
+By default, Cacher will print the results to standard out. To skip this use the `--nostdout` option.
 
-`Cacher --notstdout`
+`Cacher --nostdout`
 
 ### Server alert
 By default, Cacher will __no longer__ send a server alert. To send a server alert, use the `--serveralert` option.
