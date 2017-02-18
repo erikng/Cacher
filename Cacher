@@ -26,9 +26,9 @@ Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
 
 Author: Erik Gomez
-Last Updated: 01-04-2017
+Last Updated: 02-18-2017
 """
-version = '3.0'
+version = '3.0.1'
 
 
 def cacher(lines, targetDate, friendlyNames):
