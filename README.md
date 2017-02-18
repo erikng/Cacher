@@ -30,7 +30,7 @@ Cacher currently supports Server 5.2 and higher.
 - For Server 5-5.1 please see [this commit](https://github.com/erikng/Cacher/commit/57ea9c3c80c17bb29d4deb89cb07a2ae841613d9)
 
 ## Usage
-```python
+```
 Usage: Cacher [options]
 
 Options:
