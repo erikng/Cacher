@@ -592,6 +592,15 @@ def cacher(lines, targetDate, friendlyNames):
     # print("\n".join(finalOutput))
 
 
+def check_serverconfig():
+    try:
+        config = '/Library/Server/Caching/Config/Config.plist'
+        plist = plistlib.readPlist(config)
+        return plist['LogClientIdentity']
+    except Exception:
+        return None
+
+
 def get_serverversion():
     try:
         serverversion = '/Applications/Server.app/Contents/version.plist'
@@ -682,6 +691,33 @@ def main():
         pass
     else:
         print "Server version is %s and not compatible" % get_serverversion()
+        sys.exit(1)
+
+    # Check if LogClientIdentity is configured correctly. If it isn't - bail.
+    serverconfig = check_serverconfig()
+    if serverconfig is True:
+        pass
+    elif type(serverconfig) is str:
+        print "LogClientIdentity is set to a string value: " \
+            "%s" % serverconfig
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    elif type(serverconfig) is int:
+        print "LogClientIdentity is set to an integer value: " \
+            "%s" % str(serverconfig)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    elif not serverconfig:
+        print "LogClientIdentity is not set"
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    else:
+        print "LogClientIdentity is set to: %s" % str(serverconfig)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
         sys.exit(1)
 
     # Options
