@@ -82,7 +82,7 @@ By default, Cacher will use the "Friendly Names" for iOS devices. To use the mod
 
 `Cacher --deviceids`
 
-Friendly Names Example:
+Device IDs Example:
 ``` bash
 A total of 3513 iOS downloads were requested from the Caching Server yesterday consisting of:
  A total of 4 Apple TV downloads
@@ -96,7 +96,7 @@ A total of 3513 iOS downloads were requested from the Caching Server yesterday c
   5 iPad2,4
 ```
 
-Device IDs Example:
+Friendly Names Example:
 ``` bash
 A total of 3513 iOS downloads were requested from the Caching Server yesterday consisting of:
  A total of 4 Apple TV downloads
