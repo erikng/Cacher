@@ -769,7 +769,7 @@ def main():
     if opts.targetdate:
         targetDate = opts.targetdate
     else:
-        targetDate = date.today() - timedelta(1)
+        targetDate = str(date.today() - timedelta(1))
     if opts.logpath:
         logPath = opts.logpath
     else:
