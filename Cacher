@@ -681,7 +681,7 @@ def main():
     if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
         pass
     else:
-        print "Server version is %s and not compatible" % serverversion()
+        print "Server version is %s and not compatible" % get_serverversion()
         sys.exit(1)
 
     # Options
