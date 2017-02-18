@@ -34,6 +34,7 @@ version = '3.0'
 def cacher(lines, targetDate, friendlyNames):
     # Basically run through all the lines a single time and collect all the
     # relevant data to slice, do stats with, etc.
+    noClientIdentityLog = []
     sizeLog = []
     AC2Log = []
     IPLog = []
@@ -170,7 +171,9 @@ def cacher(lines, targetDate, friendlyNames):
                 # Beginning of Server downloads section
                 #
                 #
-                if 'Received GET request ' in logmsg:
+                if 'Received GET request by' in logmsg:
+                    noClientIdentityLog.append(logmsg)
+                elif 'Received GET request from' in logmsg:
                     # Beginning of IP section
                     #
                     #
@@ -584,7 +587,15 @@ def cacher(lines, targetDate, friendlyNames):
     # Add Cacher version
     finalOutput.append('Cacher version: %s' % version)
     finalOutput.append('Uptime: %s' % get_uptime())
-
+    # Check to see if there are entries in the noClientLog. If there are,
+    # print to final message to warn the user.
+    if noClientIdentityLog:
+        finalOutput.append('')
+        finalOutput.append("WARNING: Found %s logs that did not contain " \
+        "the client identity. These logs have been dropped and are not " \
+        "counted in the statistics. More than likely LogClientIdentity " \
+        "was incorrectly set or not configured on this date." \
+        % len(noClientIdentityLog))
     #
     #
     # End of the final output.
