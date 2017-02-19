@@ -26,9 +26,9 @@ Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
 
 Author: Erik Gomez
-Last Updated: 02-18-2017
+Last Updated: 02-19-2017
 """
-version = '3.0.2'
+version = '3.0.3'
 
 
 def cacher(lines, targetDate, friendlyNames):
@@ -705,33 +705,6 @@ def main():
         print "Server version is %s and not compatible" % get_serverversion()
         sys.exit(1)
 
-    # Check if LogClientIdentity is configured correctly. If it isn't - bail.
-    serverconfig = check_serverconfig()
-    if serverconfig is True:
-        pass
-    elif type(serverconfig) is str:
-        print "LogClientIdentity is set to a string value: " \
-            "%s" % serverconfig
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
-        sys.exit(1)
-    elif type(serverconfig) is int:
-        print "LogClientIdentity is set to an integer value: " \
-            "%s" % str(serverconfig)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
-        sys.exit(1)
-    elif not serverconfig:
-        print "LogClientIdentity is not set"
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
-        sys.exit(1)
-    else:
-        print "LogClientIdentity is set to: %s" % str(serverconfig)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
-        sys.exit(1)
-
     # Options
     usage = '%prog [options]'
     o = optparse.OptionParser(usage=usage)
@@ -765,6 +738,7 @@ def main():
                        "Ex. #channel or @username. Requires Slack Option."))
 
     opts, args = o.parse_args()
+
     # Configure Server
     if opts.configureserver:
         configureServer = True
@@ -778,6 +752,28 @@ def main():
             print 'Caching Server settings are now: ' + configureserver()
             sys.exit(1)
 
+    # Check if LogClientIdentity is configured correctly. If it isn't - bail.
+    serverconfig = check_serverconfig()
+    if serverconfig is True:
+        pass
+    elif type(serverconfig) is str or type(serverconfig) is int:
+        print "LogClientIdentity is incorrectly set to: %s - Type: %s" \
+            % (str(serverconfig), type(serverconfig).__name__)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    elif not serverconfig:
+        print "LogClientIdentity is not set"
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    else:
+        print "LogClientIdentity is set to: %s" % str(serverconfig)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+
+    # Grab other options
     if opts.targetdate:
         targetDate = opts.targetdate
     else:
