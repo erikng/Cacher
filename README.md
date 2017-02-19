@@ -31,7 +31,7 @@ Cacher currently supports Server 5.2 and higher.
 
 ## Usage
 ```
-Usage: Cacher [options]
+Usage: cacher.py [options]
 
 Options:
   -h, --help            show this help message and exit
@@ -61,7 +61,7 @@ The following are optional features:
 ### Configure Caching service logging
 By default, the Caching service will not log the model and iOS/OS X version. In order to get true results from this script, run the following command (as root):
 
-`sudo Cacher --configureserver`
+`sudo cacher.py --configureserver`
 
 If successful, you will see the following output:
 
@@ -70,17 +70,17 @@ If successful, you will see the following output:
 ### Target date
 By default, Cacher will use look for logs from the previous date. To target logs from a custom date, use the `--targetdate` option.
 
-`Cacher --targetdate "2016-11-28"`
+`cacher.py --targetdate "2016-11-28"`
 
 ### Log path
 By default, Cacher will use look for logs from in /Library/Server/Caching/Logs. To target logs in a custom path, use the `--logpath` option.
 
-`Cacher --logpath "/path/to/logs"`
+`cacher.py --logpath "/path/to/logs"`
 
 ### DeviceIDs
 By default, Cacher will use the "Friendly Names" for iOS devices. To use the model Device ID, use the `--deviceids` option.
 
-`Cacher --deviceids`
+`cacher.py --deviceids`
 
 Device IDs Example:
 ``` bash
@@ -113,14 +113,14 @@ A total of 3513 iOS downloads were requested from the Caching Server yesterday c
 ### No Standard output
 By default, Cacher will print the results to standard out. To skip this use the `--nostdout` option.
 
-`Cacher --nostdout`
+`cacher.py --nostdout`
 
 ### Server alert
 By default, Cacher will __no longer__ send a server alert. To send a server alert, use the `--serveralert` option.
 
 Please note that this option requires root/sudo level permissions.
 
-`sudo Cacher --serveralert`
+`sudo cacher.py --serveralert`
 
 If you attempt to use this option without elevated permissions, Cacher will write the following note to standard out.
 
@@ -143,7 +143,7 @@ Examples:
 A slack webhook must be created. To create a webhook, please go [here](https://my.slack.com/services/new/incoming-webhook/)
 
 ``` bash
-Cacher --slackalert \
+cacher.py --slackalert \
 --slackchannel "@egomez" \
 --slackwebhook "https://hooks.slack.com/services/YOURURL"``
 ```
