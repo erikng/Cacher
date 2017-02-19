@@ -663,6 +663,19 @@ def configureserver():
         return None
 
 
+def serveradmin(action, service):
+    try:
+        cmd = [
+            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
+            'admin', action, service]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        output, err = proc.communicate()
+        return output.rstrip()
+    except Exception:
+        return None
+
+
 def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
                   slackwebhook):
     # Server App Icon DL
@@ -750,6 +763,9 @@ def main():
             sys.exit(1)
         else:
             print 'Caching Server settings are now: ' + configureserver()
+            print '\nRestarting Caching Service...'
+            print '\n' + serveradmin('stop', 'caching')
+            print '\n' + serveradmin('start', 'caching')
             sys.exit(1)
 
     # Check if LogClientIdentity is configured correctly. If it isn't - bail.
