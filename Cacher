@@ -591,11 +591,12 @@ def cacher(lines, targetDate, friendlyNames):
     # print to final message to warn the user.
     if noClientIdentityLog:
         finalOutput.append('')
-        finalOutput.append("WARNING: Found %s logs that did not contain " \
-        "the client identity. These logs have been dropped and are not " \
-        "counted in the statistics. More than likely LogClientIdentity " \
-        "was incorrectly set or not configured on this date." \
-        % len(noClientIdentityLog))
+        finalOutput.append(
+            "WARNING: Found %s logs that did not contain "
+            "the client identity. These logs have been dropped and are not "
+            "counted in the statistics. More than likely LogClientIdentity "
+            "was incorrectly set or not configured on this date."
+            % len(noClientIdentityLog))
     #
     #
     # End of the final output.
@@ -670,7 +671,7 @@ def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
         request = urllib2.urlopen(url)
         jsondata = json.loads(request.read())
         iconurl = jsondata['results'][0]['artworkUrl100']
-    except:
+    except (urllib2.URLError, ValueError, KeyError) as e:
         # hardcode icon url in case it fails.
         iconurl = 'http://is5.mzstatic.com/image/thumb/Purple122/v4/b9/e8/c4' \
             '/b9e8c4b9-ce9c-174a-c1a8-d0ad0fc21da9/source/100x100bb.png'
@@ -814,7 +815,7 @@ def main():
     # because we are either running as root or the same user that created it.
     try:
         os.remove(os.path.join(logPath, '.DS_Store'))
-    except:
+    except OSError:
         pass
     if not os.listdir(logPath):
         print 'Cacher did not detect log files in %s' % logPath
