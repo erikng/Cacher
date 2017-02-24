@@ -415,9 +415,12 @@ def cacher(lines, targetDate, friendlyNames):
     finalOutput.append('')
 
     # Total Number of iOS devices
-    finalOutput.append(
-        'A total of %s iOS downloads were requested from the Caching Server'
-        ' yesterday consisting of:' % len(iOSModelOnlyLog))
+    # Don't display if 0 downloads
+    if len(iOSModelOnlyLog) > 0:
+        finalOutput.append(
+            'A total of %s iOS downloads were requested '
+            'from the Caching Server yesterday consisting of:'
+            % len(iOSModelOnlyLog))
 
     # Sort the list by device type (AppleTV, iPad, iPhone, iPod). If we aren't
     # using the friendly names, we use the standard sorting, but if we use the
@@ -454,14 +457,18 @@ def cacher(lines, targetDate, friendlyNames):
         iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
         iPodNumberLog = [int(i) for i in iPodNumberLog]
         # Output
-        finalOutput.append(
-            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
-        finalOutput.append(
-            ' A total of %s iPad downloads' % sum(iPadNumberLog))
-        finalOutput.append(
-            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
-        finalOutput.append(
-            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        if sum(AppleTVNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        if sum(iPadNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        if sum(iPhoneNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        if sum(iPodNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPod downloads' % sum(iPodNumberLog))
         for x in sorted(set(FriendlyLog)):
             numberofDevices = x.split('/')[1]
             modeltype = x.split('/')[0]
@@ -487,14 +494,18 @@ def cacher(lines, targetDate, friendlyNames):
         iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
         iPodNumberLog = [int(i) for i in iPodNumberLog]
         # Output
-        finalOutput.append(
-            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
-        finalOutput.append(
-            ' A total of %s iPad downloads' % sum(iPadNumberLog))
-        finalOutput.append(
-            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
-        finalOutput.append(
-            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        if sum(AppleTVNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        if sum(iPadNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        if sum(iPhoneNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        if sum(iPodNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPod downloads' % sum(iPodNumberLog))
         for x in sorted(set(iOSModelOnlyLog)):
             numberofDevices = iOSModelOnlyLog.count(x)
             modeltype = x
@@ -503,9 +514,10 @@ def cacher(lines, targetDate, friendlyNames):
     finalOutput.append('')
 
     # Total Number of OS Versions
-    finalOutput.append(
-        'A total of %s OS downloads were requested from the Caching Server'
-        ' yesterday consisting of:' % len(OSLog))
+    if len(OSLog) > 0:
+        finalOutput.append(
+            'A total of %s OS downloads were requested from the Caching Server'
+            ' yesterday consisting of:' % len(OSLog))
     for x in sorted(set(OSLog)):
         numberofVersions = OSLog.count(x)
         osversion = x[0]
@@ -521,14 +533,16 @@ def cacher(lines, targetDate, friendlyNames):
 
     # Sort the iOS versions with LooseVersion. StrictVersion fails since I am
     # cheating and adding /devicecount to the version. (Ex. iOS 10.2/2000)
-    finalOutput.append(' %s iOS downloads:' % sum(iOSDeviceNumber))
+    if sum(iOSDeviceNumber) > 0:
+        finalOutput.append(' %s iOS downloads:' % sum(iOSDeviceNumber))
     for x in sorted(set(iOSFamilyLog), key=LooseVersion):
         numberofVersions = x.split('/')[1]
         modeltype = x.split('/')[0]
         finalOutput.append('  %s %s' % (numberofVersions, modeltype))
 
     # Sort the macOS versions normally, since they all start with 10.
-    finalOutput.append(' %s macOS downloads:' % sum(macOSDeviceNumber))
+    if sum(macOSDeviceNumber) > 0:
+        finalOutput.append(' %s macOS downloads:' % sum(macOSDeviceNumber))
     for x in sorted(set(macOSFamilyLog)):
         numberofVersions = x.split('/')[1]
         modeltype = x.split('/')[0]
@@ -539,13 +553,17 @@ def cacher(lines, targetDate, friendlyNames):
     # I need logs with Apple Configurator 2 references so I can rewrite this.
     # Since you can't disintinguish between the version of AC2, I'm removing
     # the secondary line I had in the shell version.
-    finalOutput.append('A total of %s Applications were downloaded from Apple'
-                       ' Configurator 2 devices' % len(AC2Log))
-    finalOutput.append('')
+    if len(AC2Log) > 0:
+        finalOutput.append(
+            'A total of %s Applications were downloaded from Apple'
+            ' Configurator 2 devices' % len(AC2Log))
+        finalOutput.append('')
 
     # Total Number of filetypes downloaded and their respect numbers
-    finalOutput.append('A total of %s files were downloaded from the Caching'
-                       ' Server yesterday consisting of:' % len(fileTypeLog))
+    if len(fileTypeLog) > 0:
+        finalOutput.append(
+            'A total of %s files were downloaded from the Caching'
+            ' Server yesterday consisting of:' % len(fileTypeLog))
     for x in set(fileTypeLog):
         numberofFiles = fileTypeLog.count(x)
         finalOutput.append(' %s %s files' % (numberofFiles, x))
@@ -553,9 +571,11 @@ def cacher(lines, targetDate, friendlyNames):
 
     # Total Number of unique filetypes downloaded and their respect numbers
     urlUniqueLog = set(urlLog)
-    finalOutput.append('A total of %s unique files were downloaded from the'
-                       ' Caching Server yesterday consisting'
-                       ' of:' % len(urlUniqueLog))
+    if len(urlUniqueLog) > 0:
+        finalOutput.append(
+            'A total of %s unique files were downloaded from the'
+            ' Caching Server yesterday consisting'
+            ' of:' % len(urlUniqueLog))
     # Same logic taken from "File Type Section" so I'm not documenting it.
     for x in urlUniqueLog:
         if re.match(r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', x):
