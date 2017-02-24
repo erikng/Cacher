@@ -861,7 +861,8 @@ def main():
     # Now combine all .log files in the destination into a temp file that's
     # removed when python exits
     rawLog = tempfile.TemporaryFile()
-    for anyLog in glob.glob(os.path.join(tmpLogs, '*.log')):
+    # We only care about Debug logs, not service logs
+    for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
         with open(anyLog, 'rb') as f:
             shutil.copyfileobj(f, rawLog)
 
