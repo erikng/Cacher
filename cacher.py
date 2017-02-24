@@ -139,7 +139,6 @@ def cacher(lines, targetDate, friendlyNames):
         'iPod7,1': 'iPod Touch 6th Generation'
     }
     totalbytesserved = []
-    #totalbytesfromcache = []
     totalbytesfromorigin = []
     totalbytesfrompeers = []
     for x in lines:
@@ -157,19 +156,73 @@ def cacher(lines, targetDate, friendlyNames):
                 #
                 # This is a slightly less fragile method to calculate the
                 # amount of data the caching server has served.
-
-                # Ex:
+                # Eg:
                 # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
                 # 39.2 MB stored from Internet, 0 bytes from peers
-                if 'Served' in logmsg:
+                if 'Served all' in logmsg:
                     total_served_size = linesplit[3]
                     total_served_bwtype = linesplit[4]
-                    #fromcache_size = linesplit[8]
-                    #fromcachebwtype = linesplit[9]
                     fromorigin_size = linesplit[12]
                     fromoriginbwtype = linesplit[13]
                     frompeers_size = linesplit[17]
                     frompeersbwtype = linesplit[18]
+                    # Convert size of served to client to bytes
+                    if total_served_bwtype == 'KB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1024)
+                    elif total_served_bwtype == 'MB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1048576)
+                    elif total_served_bwtype == 'GB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1073741824)
+                    elif total_served_bwtype == 'TB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1099511627776)
+                    elif total_served_bwtype == 'bytes':
+                        bytes_served = total_served_size
+                    # Convert size of from internet(origin) to bytes
+                    if fromoriginbwtype == 'KB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1024)
+                    elif fromoriginbwtype == 'MB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1048576)
+                    elif fromoriginbwtype == 'GB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1073741824)
+                    elif fromoriginbwtype == 'TB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1099511627776)
+                    elif fromoriginbwtype == 'bytes':
+                        bytesfromorigin = fromorigin_size
+                    # Convert size of from peers to bytes
+                    if frompeersbwtype == 'KB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1024)
+                    elif frompeersbwtype == 'MB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1048576)
+                    elif frompeersbwtype == 'GB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1073741824)
+                    elif frompeersbwtype == 'TB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1099511627776)
+                    elif frompeersbwtype == 'bytes':
+                        bytesfrompeers = frompeers_size
+                    # Append each bw size to the total count
+                    totalbytesserved.append(bytes_served)
+                    totalbytesfromorigin.append(bytesfromorigin)
+                    totalbytesfrompeers.append(bytesfrompeers)
+                # Search through the logs for incomplete transactions (served)
+                if 'Served all' not in logmsg and 'Served' in logmsg:
+                    total_served_size = linesplit[2]
+                    total_served_bwtype = linesplit[3]
+                    fromorigin_size = linesplit[11]
+                    fromoriginbwtype = linesplit[12]
+                    frompeers_size = linesplit[16]
+                    frompeersbwtype = linesplit[17]
                     # Convert size of from cache to bytes
                     if total_served_bwtype == 'KB':
                         bytes_served = "%.0f" % (
@@ -672,11 +725,11 @@ def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
 
 def main():
     # Check for macOS Server 5.2 or higher. Use LooseVersion just in case.
-    #if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
-    #    pass
-    #else:
-    #    print "Server version is %s and not compatible" % get_serverversion()
-    #    sys.exit(1)
+    if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
+        pass
+    else:
+        print "Server version is %s and not compatible" % get_serverversion()
+        sys.exit(1)
 
     # Options
     usage = '%prog [options]'
@@ -729,25 +782,25 @@ def main():
             sys.exit(1)
 
     # Check if LogClientIdentity is configured correctly. If it isn't - bail.
-    #serverconfig = check_serverconfig()
-    #if serverconfig is True:
-    #    pass
-    #elif type(serverconfig) is str or type(serverconfig) is int:
-    #    print "LogClientIdentity is incorrectly set to: %s - Type: %s" \
-    #        % (str(serverconfig), type(serverconfig).__name__)
-    #    print "Please run sudo Cacher --configureserver and delete your " \
-    #        "log files."
-    #    sys.exit(1)
-    #elif not serverconfig:
-    #    print "LogClientIdentity is not set"
-    #    print "Please run sudo Cacher --configureserver and delete your " \
-    #        "log files."
-    #    sys.exit(1)
-    #else:
-    #    print "LogClientIdentity is set to: %s" % str(serverconfig)
-    #    print "Please run sudo Cacher --configureserver and delete your " \
-    #        "log files."
-    #    sys.exit(1)
+    serverconfig = check_serverconfig()
+    if serverconfig is True:
+        pass
+    elif type(serverconfig) is str or type(serverconfig) is int:
+        print "LogClientIdentity is incorrectly set to: %s - Type: %s" \
+            % (str(serverconfig), type(serverconfig).__name__)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    elif not serverconfig:
+        print "LogClientIdentity is not set"
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
+    else:
+        print "LogClientIdentity is set to: %s" % str(serverconfig)
+        print "Please run sudo Cacher --configureserver and delete your " \
+            "log files."
+        sys.exit(1)
 
     # Grab other options
     if opts.targetdate:
