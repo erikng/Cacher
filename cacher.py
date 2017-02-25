@@ -138,6 +138,9 @@ def cacher(lines, targetDate, friendlyNames):
         'iPod5,1': 'iPod Touch 5th Generation',
         'iPod7,1': 'iPod Touch 6th Generation'
     }
+    totalbytesserved = []
+    totalbytesfromorigin = []
+    totalbytesfrompeers = []
     for x in lines:
         # If there aren't at least 3 pieces somehow, they'll get filled in
         # with blanks
@@ -151,23 +154,124 @@ def cacher(lines, targetDate, friendlyNames):
 
                 # Beginning of Server bandwidth section
                 #
-                #
-                # This is a very fragile part of the script, but for now, I
-                # don't care. Split the logmsg and pull the data points I need
-                # from exact split points. This could break at any time.
-                # Ex: Since server start: 1.09 GB returned to clients,
-                # 12.51 MB stored from Internet, 0 bytes from peers;
-                # 0 bytes imported.
-                if 'start:' in logmsg:
-                    clientbw = linesplit[3]
-                    clientbwtype = linesplit[4]
-                    applebw = linesplit[8]
-                    applebwtype = linesplit[9]
-                    otherbw = linesplit[13]
-                    otherbwtype = linesplit[14]
-                    sizeLog.append('%s/%s/%s/%s/%s/%s' % (
-                        clientbw, clientbwtype, applebw, applebwtype, otherbw,
-                        otherbwtype))
+                # This is a slightly less fragile method to calculate the
+                # amount of data the caching server has served.
+                # Eg:
+                # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
+                # 39.2 MB stored from Internet, 0 bytes from peers
+                if 'Served all' in logmsg:
+                    total_served_size = linesplit[3]
+                    total_served_bwtype = linesplit[4]
+                    fromorigin_size = linesplit[12]
+                    fromoriginbwtype = linesplit[13]
+                    frompeers_size = linesplit[17]
+                    frompeersbwtype = linesplit[18]
+                    # Convert size of served to client to bytes
+                    if total_served_bwtype == 'KB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1024)
+                    elif total_served_bwtype == 'MB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1048576)
+                    elif total_served_bwtype == 'GB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1073741824)
+                    elif total_served_bwtype == 'TB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1099511627776)
+                    elif total_served_bwtype == 'bytes':
+                        bytes_served = total_served_size
+                    # Convert size of from internet(origin) to bytes
+                    if fromoriginbwtype == 'KB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1024)
+                    elif fromoriginbwtype == 'MB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1048576)
+                    elif fromoriginbwtype == 'GB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1073741824)
+                    elif fromoriginbwtype == 'TB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1099511627776)
+                    elif fromoriginbwtype == 'bytes':
+                        bytesfromorigin = fromorigin_size
+                    # Convert size of from peers to bytes
+                    if frompeersbwtype == 'KB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1024)
+                    elif frompeersbwtype == 'MB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1048576)
+                    elif frompeersbwtype == 'GB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1073741824)
+                    elif frompeersbwtype == 'TB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1099511627776)
+                    elif frompeersbwtype == 'bytes':
+                        bytesfrompeers = frompeers_size
+                    # Append each bw size to the total count
+                    totalbytesserved.append(bytes_served)
+                    totalbytesfromorigin.append(bytesfromorigin)
+                    totalbytesfrompeers.append(bytesfrompeers)
+                # Search through the logs for incomplete transactions (served)
+                if 'Served all' not in logmsg and 'Served' in logmsg:
+                    total_served_size = linesplit[2]
+                    total_served_bwtype = linesplit[3]
+                    fromorigin_size = linesplit[11]
+                    fromoriginbwtype = linesplit[12]
+                    frompeers_size = linesplit[16]
+                    frompeersbwtype = linesplit[17]
+                    # Convert size of from cache to bytes
+                    if total_served_bwtype == 'KB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1024)
+                    elif total_served_bwtype == 'MB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1048576)
+                    elif total_served_bwtype == 'GB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1073741824)
+                    elif total_served_bwtype == 'TB':
+                        bytes_served = "%.0f" % (
+                            float(total_served_size) * 1099511627776)
+                    elif total_served_bwtype == 'bytes':
+                        bytes_served = total_served_size
+                    # Convert size of from internet(origin) to bytes
+                    if fromoriginbwtype == 'KB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1024)
+                    elif fromoriginbwtype == 'MB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1048576)
+                    elif fromoriginbwtype == 'GB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1073741824)
+                    elif fromoriginbwtype == 'TB':
+                        bytesfromorigin = "%.0f" % (
+                            float(fromorigin_size) * 1099511627776)
+                    elif fromoriginbwtype == 'bytes':
+                        bytesfromorigin = fromorigin_size
+                    # Convert size of from peers to bytes
+                    if frompeersbwtype == 'KB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1024)
+                    elif frompeersbwtype == 'MB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1048576)
+                    elif frompeersbwtype == 'GB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1073741824)
+                    elif frompeersbwtype == 'TB':
+                        bytesfrompeers = "%.0f" % (
+                            float(frompeers_size) * 1099511627776)
+                    elif frompeersbwtype == 'bytes':
+                        bytesfrompeers = frompeers_size
+                    # Append each bw size to the total count
+                    totalbytesserved.append(bytes_served)
+                    totalbytesfromorigin.append(bytesfromorigin)
+                    totalbytesfrompeers.append(bytesfrompeers)
                 # Beginning of Server downloads section
                 #
                 #
@@ -283,143 +387,24 @@ def cacher(lines, targetDate, friendlyNames):
     finalOutput.append(
         'Cacher has retrieved the following stats for %s:' % targetDate)
     finalOutput.append('')
-    # Bandwidth served to clients
-    # There has to be a better way to do this but for v3.0, this works.
-    # This is the worst part of the script/least dynamic. :(
-    # This also does not take into account reboots in the middle of the day.
-    # If someone can figure it out and rewrite this part, kudos.
-    bwtypes = ['Terabytes', 'Gigabytes', 'Megabytes', 'bytes']
+    # Add up our bytes from each store from our list to get a total
+    totalbytesserved = sum(map(int, totalbytesserved))
+    totalbytesfromorigin = sum(map(int, totalbytesfromorigin))
+    totalbytesfrompeers = sum(map(int, totalbytesfrompeers))
     # Bail here since there aren't any bandwidth stats.
-    if not sizeLog:
+    if not totalbytesserved:
         print 'Cacher did not retrieve any stats for %s' % targetDate
         sys.exit(1)
-    else:
-        # Cheat (again) and split the sizeLog so we can do our multiplication
-        # below.
-        firstotalbw = sizeLog[0].split("/")
-        lasttotalbw = sizeLog[-1].split("/")
-    # Mulitply the type of bandwidth by the amount of bytes. This facilitates
-    # the next part to calculate the bandwidth.
-    #
-    # Since the logs are now split, we are given a list. Take this list and
-    # calculate bandwidth type. Should probably do this in a loop, but oh well.
-    # Ex. [1.09, GB, 12.51, MB, 0, bytes]
-    if firstotalbw[1] == 'TB':
-        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1099511627776)
-    elif firstotalbw[1] == 'GB':
-        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1073741824)
-    elif firstotalbw[1] == 'MB':
-        firstotalbw[0] = "%.2f" % (float(firstotalbw[0]) * 1048576)
-    elif firstotalbw[1] == 'bytes':
-        firstotalbw[0] = float(firstotalbw[0])
-
-    if lasttotalbw[1] == 'TB':
-        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1099511627776)
-    elif lasttotalbw[1] == 'GB':
-        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1073741824)
-    elif lasttotalbw[1] == 'MB':
-        lasttotalbw[0] = "%.2f" % (float(lasttotalbw[0]) * 1048576)
-    elif lasttotalbw[1] == 'bytes':
-        lasttotalbw[0] = float(lasttotalbw[0])
-
-    if firstotalbw[3] == 'TB':
-        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1099511627776)
-    elif firstotalbw[3] == 'GB':
-        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1073741824)
-    elif firstotalbw[3] == 'MB':
-        firstotalbw[2] = "%.2f" % (float(firstotalbw[2]) * 1048576)
-    elif firstotalbw[3] == 'bytes':
-        firstotalbw[2] = int(firstotalbw[2])
-
-    if lasttotalbw[3] == 'TB':
-        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1099511627776)
-    elif lasttotalbw[3] == 'GB':
-        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1073741824)
-    elif firstotalbw[3] == 'MB':
-        lasttotalbw[2] = "%.2f" % (float(lasttotalbw[2]) * 1048576)
-    elif firstotalbw[3] == 'bytes':
-        lasttotalbw[2] = float(lasttotalbw[2])
-
-    if firstotalbw[5] == 'TB':
-        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1099511627776)
-    elif firstotalbw[5] == 'GB':
-        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1073741824)
-    elif firstotalbw[5] == 'MB':
-        firstotalbw[4] = "%.2f" % (float(firstotalbw[4]) * 1048576)
-    elif firstotalbw[5] == 'bytes':
-        firstotalbw[4] = int(firstotalbw[4])
-
-    if lasttotalbw[5] == 'TB':
-        lasttotalbw[4] = "%.2f" % (float(lasttotalbw[4]) * 1099511627776)
-    elif lasttotalbw[5] == 'GB':
-        lasttotalbw[4] = "%.2f" % (float(lasttotalbw[4]) * 1073741824)
-    elif firstotalbw[5] == 'MB':
-        lasttotalbw[4] = float(lasttotalbw[4]) * 1048576
-    elif firstotalbw[5] == 'bytes':
-        lasttotalbw[4] = float(lasttotalbw[4])
-
-    # Now take the last bandwidth number from the first one to get our total
-    # bandwidth served. Depending on the amount of bytes, we must divide by
-    # its relevant factor.
-    # Since we know the factor we are dividing by, we can also append the
-    # bandwidth type.
-    totalclientbw = "%.2f" % (
-        (float(lasttotalbw[0]) - float(firstotalbw[0])))
-    if float(totalclientbw) >= 1099511627776:
-        totalclientbw = "%.2f" % (float(totalclientbw) / 1099511627776)
-        totalclientbwtype = bwtypes[0]
-    elif (float(totalclientbw) < 1099511627776) and (
-            float(totalclientbw) >= 1073741824):
-        totalclientbw = "%.2f" % (float(totalclientbw) / 1073741824)
-        totalclientbwtype = bwtypes[1]
-    elif (float(totalclientbw) < 1073741824) and (
-            float(totalclientbw) >= 1048576):
-        totalclientbw = "%.2f" % (float(totalclientbw) / 1048576)
-        totalclientbwtype = bwtypes[2]
-    elif float(totalclientbw) < 1048576:
-        totalclientbwtype = bwtypes[3]
-
-    totalapplebw = "%.2f" % (
-        (float(lasttotalbw[2]) - float(firstotalbw[2])))
-    if float(totalapplebw) >= 1099511627776:
-        totalapplebw = "%.2f" % (float(totalapplebw) / 1099511627776)
-        totalapplebwtype = bwtypes[0]
-    elif (float(totalapplebw) < 1099511627776) and (
-            float(totalapplebw) >= 1073741824):
-        totalapplebw = "%.2f" % (float(totalapplebw) / 1073741824)
-        totalapplebwtype = bwtypes[1]
-    elif (float(totalapplebw) < 1073741824) and (
-            float(totalapplebw) >= 1048576):
-        totalapplebw = "%.2f" % (float(totalapplebw) / 1048576)
-        totalapplebwtype = bwtypes[2]
-    elif float(totalapplebw) < 1048576:
-        totalapplebwtype = bwtypes[3]
-
-    totalcachingbw = "%.2f" % (
-        (float(lasttotalbw[4]) - float(firstotalbw[4])))
-    if float(totalcachingbw) >= 1099511627776:
-        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1099511627776)
-        totalcachingbwtype = bwtypes[1]
-    elif (float(totalcachingbw) < 1099511627776) and (
-            float(totalcachingbw) >= 1073741824):
-        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1073741824)
-        totalcachingbwtype = bwtypes[1]
-    elif (float(totalcachingbw) < 1073741824) and (
-            float(totalcachingbw) >= 1048576):
-        totalcachingbw = "%.2f" % (float(totalcachingbw) / 1048576)
-        totalcachingbwtype = bwtypes[2]
-    elif float(totalcachingbw) < 1048576:
-        totalcachingbwtype = bwtypes[3]
 
     finalOutput.append(
-        '%s %s of bandwith served to client devices.' % (
-            totalclientbw, totalclientbwtype))
+        '%s of bandwith served to client devices.' % (
+            convert_bytes_to_human_readable(totalbytesserved)))
     finalOutput.append(
-        ' %s %s of bandwith requested from Apple' % (
-            totalapplebw, totalapplebwtype))
+        ' %s of bandwith requested from Apple' % (
+            convert_bytes_to_human_readable(totalbytesfromorigin)))
     finalOutput.append(
-        ' %s %s of bandwith requested from other Caching Servers' % (
-            totalcachingbw, totalcachingbwtype))
+        ' %s of bandwith requested from other Caching Servers' % (
+            convert_bytes_to_human_readable(totalbytesfrompeers)))
     finalOutput.append('')
 
     # Total Numbers of IP addresses
@@ -430,9 +415,12 @@ def cacher(lines, targetDate, friendlyNames):
     finalOutput.append('')
 
     # Total Number of iOS devices
-    finalOutput.append(
-        'A total of %s iOS downloads were requested from the Caching Server'
-        ' yesterday consisting of:' % len(iOSModelOnlyLog))
+    # Don't display if 0 downloads
+    if len(iOSModelOnlyLog) > 0:
+        finalOutput.append(
+            'A total of %s iOS downloads were requested '
+            'from the Caching Server yesterday consisting of:'
+            % len(iOSModelOnlyLog))
 
     # Sort the list by device type (AppleTV, iPad, iPhone, iPod). If we aren't
     # using the friendly names, we use the standard sorting, but if we use the
@@ -469,14 +457,18 @@ def cacher(lines, targetDate, friendlyNames):
         iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
         iPodNumberLog = [int(i) for i in iPodNumberLog]
         # Output
-        finalOutput.append(
-            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
-        finalOutput.append(
-            ' A total of %s iPad downloads' % sum(iPadNumberLog))
-        finalOutput.append(
-            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
-        finalOutput.append(
-            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        if sum(AppleTVNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        if sum(iPadNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        if sum(iPhoneNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        if sum(iPodNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPod downloads' % sum(iPodNumberLog))
         for x in sorted(set(FriendlyLog)):
             numberofDevices = x.split('/')[1]
             modeltype = x.split('/')[0]
@@ -502,14 +494,18 @@ def cacher(lines, targetDate, friendlyNames):
         iPhoneNumberLog = [int(i) for i in iPhoneNumberLog]
         iPodNumberLog = [int(i) for i in iPodNumberLog]
         # Output
-        finalOutput.append(
-            ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
-        finalOutput.append(
-            ' A total of %s iPad downloads' % sum(iPadNumberLog))
-        finalOutput.append(
-            ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
-        finalOutput.append(
-            ' A total of %s iPod downloads' % sum(iPodNumberLog))
+        if sum(AppleTVNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s Apple TV downloads' % sum(AppleTVNumberLog))
+        if sum(iPadNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPad downloads' % sum(iPadNumberLog))
+        if sum(iPhoneNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPhone downloads' % sum(iPhoneNumberLog))
+        if sum(iPodNumberLog) > 0:
+            finalOutput.append(
+                ' A total of %s iPod downloads' % sum(iPodNumberLog))
         for x in sorted(set(iOSModelOnlyLog)):
             numberofDevices = iOSModelOnlyLog.count(x)
             modeltype = x
@@ -518,9 +514,10 @@ def cacher(lines, targetDate, friendlyNames):
     finalOutput.append('')
 
     # Total Number of OS Versions
-    finalOutput.append(
-        'A total of %s OS downloads were requested from the Caching Server'
-        ' yesterday consisting of:' % len(OSLog))
+    if len(OSLog) > 0:
+        finalOutput.append(
+            'A total of %s OS downloads were requested from the Caching Server'
+            ' yesterday consisting of:' % len(OSLog))
     for x in sorted(set(OSLog)):
         numberofVersions = OSLog.count(x)
         osversion = x[0]
@@ -536,14 +533,16 @@ def cacher(lines, targetDate, friendlyNames):
 
     # Sort the iOS versions with LooseVersion. StrictVersion fails since I am
     # cheating and adding /devicecount to the version. (Ex. iOS 10.2/2000)
-    finalOutput.append(' %s iOS downloads:' % sum(iOSDeviceNumber))
+    if sum(iOSDeviceNumber) > 0:
+        finalOutput.append(' %s iOS downloads:' % sum(iOSDeviceNumber))
     for x in sorted(set(iOSFamilyLog), key=LooseVersion):
         numberofVersions = x.split('/')[1]
         modeltype = x.split('/')[0]
         finalOutput.append('  %s %s' % (numberofVersions, modeltype))
 
     # Sort the macOS versions normally, since they all start with 10.
-    finalOutput.append(' %s macOS downloads:' % sum(macOSDeviceNumber))
+    if sum(macOSDeviceNumber) > 0:
+        finalOutput.append(' %s macOS downloads:' % sum(macOSDeviceNumber))
     for x in sorted(set(macOSFamilyLog)):
         numberofVersions = x.split('/')[1]
         modeltype = x.split('/')[0]
@@ -554,13 +553,17 @@ def cacher(lines, targetDate, friendlyNames):
     # I need logs with Apple Configurator 2 references so I can rewrite this.
     # Since you can't disintinguish between the version of AC2, I'm removing
     # the secondary line I had in the shell version.
-    finalOutput.append('A total of %s Applications were downloaded from Apple'
-                       ' Configurator 2 devices' % len(AC2Log))
-    finalOutput.append('')
+    if len(AC2Log) > 0:
+        finalOutput.append(
+            'A total of %s Applications were downloaded from Apple'
+            ' Configurator 2 devices' % len(AC2Log))
+        finalOutput.append('')
 
     # Total Number of filetypes downloaded and their respect numbers
-    finalOutput.append('A total of %s files were downloaded from the Caching'
-                       ' Server yesterday consisting of:' % len(fileTypeLog))
+    if len(fileTypeLog) > 0:
+        finalOutput.append(
+            'A total of %s files were downloaded from the Caching'
+            ' Server yesterday consisting of:' % len(fileTypeLog))
     for x in set(fileTypeLog):
         numberofFiles = fileTypeLog.count(x)
         finalOutput.append(' %s %s files' % (numberofFiles, x))
@@ -568,9 +571,11 @@ def cacher(lines, targetDate, friendlyNames):
 
     # Total Number of unique filetypes downloaded and their respect numbers
     urlUniqueLog = set(urlLog)
-    finalOutput.append('A total of %s unique files were downloaded from the'
-                       ' Caching Server yesterday consisting'
-                       ' of:' % len(urlUniqueLog))
+    if len(urlUniqueLog) > 0:
+        finalOutput.append(
+            'A total of %s unique files were downloaded from the'
+            ' Caching Server yesterday consisting'
+            ' of:' % len(urlUniqueLog))
     # Same logic taken from "File Type Section" so I'm not documenting it.
     for x in urlUniqueLog:
         if re.match(r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', x):
@@ -602,6 +607,34 @@ def cacher(lines, targetDate, friendlyNames):
     # End of the final output.
     return finalOutput
     # print("\n".join(finalOutput))
+
+
+def convert_bytes_to_human_readable(number_of_bytes):
+    if number_of_bytes < 0:
+        raise ValueError("ERROR: number of bytes can not be less than 0")
+
+    step_to_greater_unit = 1024.
+    number_of_bytes = float(number_of_bytes)
+    unit = 'bytes'
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'KB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'MB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'GB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'TB'
+
+    precision = 1
+    number_of_bytes = round(number_of_bytes, precision)
+    return str(number_of_bytes) + ' ' + unit
 
 
 def check_serverconfig():
@@ -848,7 +881,8 @@ def main():
     # Now combine all .log files in the destination into a temp file that's
     # removed when python exits
     rawLog = tempfile.TemporaryFile()
-    for anyLog in glob.glob(os.path.join(tmpLogs, '*.log')):
+    # We only care about Debug logs, not service logs
+    for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
         with open(anyLog, 'rb') as f:
             shutil.copyfileobj(f, rawLog)
 
