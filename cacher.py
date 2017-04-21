@@ -679,7 +679,18 @@ def get_uptime():
         output, err = proc.communicate()
         splitout = str.split(output)
         uptimeamount = splitout[2]
+        # Uptime Type to use if units are "less than days"
         uptimetype = splitout[3].replace(',', '')
+        if uptimeamount[-1:]==',':
+            # Last char is a comma; this likely indicates that the
+            # `uptimetype` is in hours and not in a "greater" unit
+            uptimeamount = uptimeamount[:-1] # get rid of the comma at the end
+            uptimeamount = uptimeamount.split(':')
+            hourtype = ' hour, ' if uptimeamount[0]==1 else ' hours, '
+            uptimeamount = uptimeamount[0] + hourtype + uptimeamount[1]
+            # `uptimetype` to use if main units are in hours and minutes,
+            # which is not the best way to handle this... but it works.
+            uptimetype = 'minutes'
         return '%s %s' % (uptimeamount, uptimetype)
     except Exception:
         return None
