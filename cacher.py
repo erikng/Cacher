@@ -61,6 +61,8 @@ def cacher(lines, targetDate, friendlyNames):
     # the macOS version (for the alert), while dynamically looping through the
     # logs.
     friendlyDarwin = {
+        '16.6.0': '10.12.5',
+        '16.5.0': '10.12.4',
         '16.4.0': '10.12.3',
         '16.3.0': '10.12.2',
         '16.1.0': '10.12.1',
