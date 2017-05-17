@@ -137,6 +137,8 @@ def cacher(lines, targetDate, friendlyNames):
         'iPad6,4': 'iPad Pro 9.7 Inch 1st Generation [Wifi + Cellular]',
         'iPad6,7': 'iPad Pro 12.9 Inch 1st Generation [Wifi]',
         'iPad6,8': 'iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]',
+        'iPad6,11': 'iPad 5th Generation [Wifi]',
+        'iPad6,12': 'iPad 5th Generation [Wifi + Cellular]',
         'iPod5,1': 'iPod Touch 5th Generation',
         'iPod7,1': 'iPod Touch 6th Generation'
     }
