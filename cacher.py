@@ -392,7 +392,7 @@ def cacher(lines, targetDate, friendlyNames):
                     # Notice Example 3 posted above. Those are the odd URLs for
                     # Personal iCloud data. Since it has no discernable suffix,
                     # log a value of 'personal iCloud'. :shrug:
-                elif re.match(r'.+(\icloud)', URL):
+                    elif re.match(r'.+(\icloud)', URL):
                         fileType = re.match(r'.+(\icloud)', URL)
                         fileTypeLog.append('personal iCloud')
                     #
