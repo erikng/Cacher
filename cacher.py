@@ -26,7 +26,7 @@ Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
 
 Author: Erik Gomez
-Last Updated: 02-15-2017
+Last Updated: 06-08-2017
 """
 version = '3.0.4'
 
@@ -61,6 +61,8 @@ def cacher(lines, targetDate, friendlyNames):
     # the macOS version (for the alert), while dynamically looping through the
     # logs.
     friendlyDarwin = {
+        '17.0.0': '10.13.0',
+        '16.7.0': '10.12.6',
         '16.6.0': '10.12.5',
         '16.5.0': '10.12.4',
         '16.4.0': '10.12.3',
@@ -139,6 +141,10 @@ def cacher(lines, targetDate, friendlyNames):
         'iPad6,8': 'iPad Pro 12.9 Inch 1st Generation [Wifi + Cellular]',
         'iPad6,11': 'iPad 5th Generation [Wifi]',
         'iPad6,12': 'iPad 5th Generation [Wifi + Cellular]',
+        'iPad7,1': 'iPad Pro 12.9 Inch 2nd Generation [Wifi]',
+        'iPad7,2': 'iPad Pro 12.9 Inch 2nd Generation [Wifi + Cellular]',
+        'iPad7,3': 'iPad Pro 10.5 Inch 1st Generation [Wifi]',
+        'iPad7,4': 'iPad Pro 10.5 Inch 1st Generation [Wifi + Cellular]',
         'iPod5,1': 'iPod Touch 5th Generation',
         'iPod7,1': 'iPod Touch 6th Generation'
     }
@@ -385,10 +391,10 @@ def cacher(lines, targetDate, friendlyNames):
                         fileTypeLog.append(fileType.group(1))
                     # Notice Example 3 posted above. Those are the odd URLs for
                     # Personal iCloud data. Since it has no discernable suffix,
-                    # log a value of 'personal icloud'. :shrug:
+                    # log a value of 'personal iCloud'. :shrug:
                     elif re.match(r'.+(\icloud)', URL):
                         fileType = re.match(r'.+(\icloud)', URL)
-                        fileTypeLog.append('personal icloud')
+                        fileTypeLog.append('personal iCloud')
                     #
                     #
                     # End of File Type section
@@ -604,7 +610,7 @@ def cacher(lines, targetDate, friendlyNames):
             fileTypeUniqueLog.append(fileType.group(1))
         elif re.match(r'.+(\icloud)', URL):
             fileType = re.match(r'.+(\icloud)', x)
-            fileTypeUniqueLog.append('personal icloud')
+            fileTypeUniqueLog.append('personal iCloud')
     for x in set(sorted(fileTypeUniqueLog)):
         numberofFiles = fileTypeUniqueLog.count(x)
         finalOutput.append(' %s %s files' % (numberofFiles, x))
