@@ -14,21 +14,19 @@ import subprocess
 import sys
 import tempfile
 import urllib2
+import StringIO
 
 """Cacher rewritten in Python.
 Inspired by Michael Lynn https://gist.github.com/pudquick/ffdbdb52ae6960ca8e55
-
 This script will process Caching Server Debug Logs.
 You can output this data to stdout, send it to the Apple email alert mechanism,
 or send to a slack channel.
-
 Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
-
 Author: Erik Gomez
 Last Updated: 06-08-2017
 """
-version = '3.0.4'
+version = '10.13'
 
 
 def cacher(lines, targetDate, friendlyNames):
@@ -176,12 +174,12 @@ def cacher(lines, targetDate, friendlyNames):
                 # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
                 # 39.2 MB stored from Internet, 0 bytes from peers
                 if 'Served all' in logmsg:
-                    total_served_size = linesplit[3]
-                    total_served_bwtype = linesplit[4]
-                    fromorigin_size = linesplit[12]
-                    fromoriginbwtype = linesplit[13]
-                    frompeers_size = linesplit[17]
-                    frompeersbwtype = linesplit[18]
+                    total_served_size = linesplit[12]
+                    total_served_bwtype = linesplit[13][:-1]
+                    fromorigin_size = linesplit[17]
+                    fromoriginbwtype = linesplit[13][:-1]
+                    frompeers_size = linesplit[21]
+                    frompeersbwtype = linesplit[13][:-1]
                     # Convert size of served to client to bytes
                     if total_served_bwtype == 'KB':
                         bytes_served = "%.0f" % (
@@ -232,13 +230,14 @@ def cacher(lines, targetDate, friendlyNames):
                     totalbytesfromorigin.append(bytesfromorigin)
                     totalbytesfrompeers.append(bytesfrompeers)
                 # Search through the logs for incomplete transactions (served)
-                if 'Served all' not in logmsg and 'Served' in logmsg:
-                    total_served_size = linesplit[2]
-                    total_served_bwtype = linesplit[3]
-                    fromorigin_size = linesplit[11]
-                    fromoriginbwtype = linesplit[12]
-                    frompeers_size = linesplit[16]
-                    frompeersbwtype = linesplit[17]
+               #
+                if 'Served all' not in logmsg and ' Served ' in logmsg:
+                    total_served_size = linesplit[12]
+                    total_served_bwtype = linesplit[13][:-1]
+                    fromorigin_size = linesplit[17]
+                    fromoriginbwtype = linesplit[13][:-1]
+                    frompeers_size = linesplit[21]
+                    frompeersbwtype = linesplit[13][:-1]
                     # Convert size of from cache to bytes
                     if total_served_bwtype == 'KB':
                         bytes_served = "%.0f" % (
@@ -289,7 +288,6 @@ def cacher(lines, targetDate, friendlyNames):
                     totalbytesfromorigin.append(bytesfromorigin)
                     totalbytesfrompeers.append(bytesfrompeers)
                 # Beginning of Server downloads section
-                #
                 #
                 if 'Received GET request by' in logmsg:
                     noClientIdentityLog.append(logmsg)
@@ -407,7 +405,6 @@ def cacher(lines, targetDate, friendlyNames):
                 #
                 #
                 # End of Server downloads section
-
             # except:
                 # print x
                 # raise Exception("Funky line - check it out")
@@ -671,7 +668,7 @@ def convert_bytes_to_human_readable(number_of_bytes):
 
 def check_serverconfig():
     try:
-        config = '/Library/Server/Caching/Config/Config.plist'
+        config = '/Library/Preferences/com.apple.AssetCache.plist'
         plist = plistlib.readPlist(config)
         return plist['LogClientIdentity']
     except Exception:
@@ -788,11 +785,11 @@ def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
 
 def main():
     # Check for macOS Server 5.2 or higher. Use LooseVersion just in case.
-    if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
-        pass
-    else:
-        print "Server version is %s and not compatible" % get_serverversion()
-        sys.exit(1)
+    #if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
+    #    pass
+    #else:
+    #    print "Server version is %s and not compatible" % get_serverversion()
+    #    sys.exit(1)
 
     # Options
     usage = '%prog [options]'
@@ -901,39 +898,40 @@ def main():
     # Check if log files exist and if not, bail. Try to delete .DS_Store files
     # just in case they exist from the GUI. Chances are we can delete this
     # because we are either running as root or the same user that created it.
-    try:
-        os.remove(os.path.join(logPath, '.DS_Store'))
-    except OSError:
-        pass
-    if not os.listdir(logPath):
-        print 'Cacher did not detect log files in %s' % logPath
-        sys.exit(1)
+    #try:
+    #    os.remove(os.path.join(logPath, '.DS_Store'))
+    #except OSError:
+    #    pass
+    #if not os.listdir(logPath):
+    #    print 'Cacher did not detect log files in %s' % logPath
+    #    sys.exit(1)
 
     # Make temporary directory
-    tmpDir = tempfile.mkdtemp()
+    #tmpDir = tempfile.mkdtemp()
 
     # Clone the contents of serverlogs over into the 'cachinglogs' subdirectory
-    tmpLogs = os.path.join(tmpDir, 'cachinglogs')
-    shutil.copytree(logPath, tmpLogs)
+    #tmpLogs = os.path.join(tmpDir, 'cachinglogs')
+    #shutil.copytree(logPath, tmpLogs)
 
     # Expand any .bz files in the directory (Server 4.1+)
-    os.chdir(tmpLogs)
-    for bzLog in glob.glob(os.path.join(tmpLogs, '*.bz2')):
-        result = subprocess.check_call(["bunzip2", bzLog])
+    #os.chdir(tmpLogs)
+    #for bzLog in glob.glob(os.path.join(tmpLogs, '*.bz2')):
+    #    result = subprocess.check_call(["bunzip2", bzLog])
 
     # Now combine all .log files in the destination into a temp file that's
     # removed when python exits
-    rawLog = tempfile.TemporaryFile()
+    rawLog = subprocess.check_output('log show  --predicate \'subsystem == "com.apple.AssetCache"\' --debug --info', shell=True);
+    rawLog = StringIO.StringIO(rawLog);
     # We only care about Debug logs, not service logs
-    for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
-        with open(anyLog, 'rb') as f:
-            shutil.copyfileobj(f, rawLog)
+    #for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
+    #    with open(anyLog, 'rb') as f:
+    #        shutil.copyfileobj(f, rawLog)
 
     # Skip back to the beginning of our newly concatenated log
-    rawLog.seek(0)
+    #rawLog.seek(0)
 
     # Purge temporary directory since it's now in memory.
-    shutil.rmtree(tmpDir)
+    #shutil.rmtree(tmpDir)
 
     # Run the function that does most of the work.
     cacherdata = cacher(rawLog.readlines(), targetDate, friendlyNames)
