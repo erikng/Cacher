@@ -1,5 +1,7 @@
-# Cacher
-Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
+# Cacher - High Sierra Edition
+Updated Cacher to support High Sierra. This version will not support the old version of Caching Service using the Server app. Please see the origional cacher developer (https://github.com/erikng/Cacher) for support of older versions of the caching service. Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
+
+High Sierra Apple Caching Log reporting
 
 Some of the things Cacher can display:
 - Total bandwidth served to clients
@@ -23,11 +25,8 @@ Some of the things Cacher can display:
 - Total unique iOS application (.ipad) files
 - Total unique Zip (.zip) files
 
-## Server support
-Cacher currently supports Server 5.2 and higher.
-
-- For Server 4 please see [this commit](https://github.com/erikng/Cacher/commit/17903d2dd29886c0dfc16054ae39b89f25581f79))
-- For Server 5-5.1 please see [this commit](https://github.com/erikng/Cacher/commit/57ea9c3c80c17bb29d4deb89cb07a2ae841613d9)
+## Only for Unified Logging (ie. 10.13 and higher)
+Cacher currently supports 10.13
 
 ## Usage
 ```
@@ -37,12 +36,9 @@ Options:
   -h, --help            show this help message and exit
   --targetdate=TARGETDATE
                         Optional: Date to parse. Example: 2017-01-15.
-  --logpath=LOGPATH     Optional: Caching Log Path. Defaults to:
-                        /Library/Server/Caching/Logs
   --deviceids           Optional: Use Device IDs (Ex: iPhone7,2). Defaults to:
                         False
   --nostdout            Optional: Do not print to standard out
-  --configureserver     Optional: Configure Server to log Client Data
   --serveralert         Optional: Send Server Alert
   --slackalert          Optional: Use Slack
   --slackwebhook=SLACKWEBHOOK
@@ -58,24 +54,25 @@ Options:
 ## Optional features
 The following are optional features:
 
-### Configure Caching service logging
-By default, the Caching service will not log the model and iOS/OS X version. In order to get true results from this script, run the following command (as root):
-
-`sudo cacher.py --configureserver`
-
-If successful, you will see the following output:
-
-`Caching Server settings are now: caching:LogClientIdentity = yes`
+### Configure Caching service for logging
+```
+sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist Verbose -bool True
+sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True
+AssetCacheManagerUtil reloadSettings
+AssetCacheManagerUtil deactivate
+AssetCacheManagerUtil activate
+```
 
 ### Target date
 By default, Cacher will use look for logs from the previous date. To target logs from a custom date, use the `--targetdate` option.
 
 `cacher.py --targetdate "2016-11-28"`
 
-### Log path
-By default, Cacher will use look for logs from in /Library/Server/Caching/Logs. To target logs in a custom path, use the `--logpath` option.
-
-`cacher.py --logpath "/path/to/logs"`
+### Log path (High Sierra)
+In this version of Cacher logs are collected by running the log command.
+```
+log show  --predicate 'subsystem == "com.apple.AssetCache"' --debug --info
+```
 
 ### DeviceIDs
 By default, Cacher will use the "Friendly Names" for iOS devices. To use the model Device ID, use the `--deviceids` option.
