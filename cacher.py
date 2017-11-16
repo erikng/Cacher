@@ -25,6 +25,10 @@ Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
 Author: Erik Gomez
 Last Updated: 06-08-2017
+
+Updated version for High Sierra
+Author: Joseph Clark
+Last Updated: 11-16-2017
 """
 version = '10.13'
 
@@ -675,15 +679,6 @@ def check_serverconfig():
         return None
 
 
-def get_serverversion():
-    try:
-        serverversion = '/Applications/Server.app/Contents/version.plist'
-        plist = plistlib.readPlist(serverversion)
-        return plist['CFBundleShortVersionString']
-    except Exception:
-        return None
-
-
 def get_uptime():
     try:
         cmd = ['/usr/bin/uptime']
@@ -708,45 +703,6 @@ def get_uptime():
     except Exception:
         return None
 
-
-def send_serveralert(targetDate, cacherdata):
-    try:
-        # Change to a directory to remove shell error
-        os.chdir('/private/tmp')
-        # Mehhhhhhhhhhhhhh
-        cmd = ['/Applications/Server.app/Contents/ServerRoot/usr/sbin/server '
-               'postAlert CustomAlert Common subject ' + '"'
-               'Caching Server Data: ' + targetDate + '"' + ' message '
-               '"' + cacherdata + '"<<<""']
-        subprocess.check_call(cmd, shell=True)
-    except Exception:
-        return None
-
-
-def configureserver():
-    try:
-        cmd = [
-            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
-            'admin', 'settings', 'caching:LogClientIdentity = yes']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        output, err = proc.communicate()
-        return output.rstrip()
-    except Exception:
-        return None
-
-
-def serveradmin(action, service):
-    try:
-        cmd = [
-            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
-            'admin', action, service]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        output, err = proc.communicate()
-        return output.rstrip()
-    except Exception:
-        return None
 
 
 def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
@@ -806,12 +762,6 @@ def main():
     o.add_option('--nostdout',
                  help='Optional: Do not print to standard out',
                  action='store_true')
-    o.add_option('--configureserver',
-                 help='Optional: Configure Server to log Client Data',
-                 action='store_true')
-    o.add_option('--serveralert',
-                 help='Optional: Send Server Alert',
-                 action='store_true')
     o.add_option("--slackalert", action="store_true", default=False,
                  help=("Optional: Use Slack"))
     o.add_option("--slackwebhook", default=None,
@@ -824,22 +774,6 @@ def main():
                        "Ex. #channel or @username. Requires Slack Option."))
 
     opts, args = o.parse_args()
-
-    # Configure Server
-    if opts.configureserver:
-        configureServer = True
-    else:
-        configureServer = False
-    if configureServer:
-        if os.getuid() != 0:
-            print 'Did not configure Caching Server - requires root'
-            sys.exit(1)
-        else:
-            print 'Caching Server settings are now: ' + configureserver()
-            print '\nRestarting Caching Service...'
-            print '\n' + serveradmin('stop', 'caching')
-            print '\n' + serveradmin('start', 'caching')
-            sys.exit(1)
 
     # Check if LogClientIdentity is configured correctly. If it isn't - bail.
     serverconfig = check_serverconfig()
@@ -879,10 +813,6 @@ def main():
         stdOut = False
     else:
         stdOut = True
-    if opts.serveralert:
-        serverAlert = True
-    else:
-        serverAlert = False
     if opts.slackalert:
         slackAlert = True
     else:
@@ -940,11 +870,6 @@ def main():
         print("\n".join(cacherdata))
     if slackAlert:
         print ''
-    if serverAlert:
-        if os.getuid() != 0:
-            print 'Did not send serverAlert - requires root'
-        else:
-            send_serveralert(targetDate, "\n".join(cacherdata))
     if slackalert is True:
         post_to_slack(targetDate, "\n".join(cacherdata), slackchannel,
                       slackusername, slackwebhook)
