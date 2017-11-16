@@ -1,12 +1,12 @@
 # Cacher - High Sierra Edition
-Updated Cacher to support High Sierra. This version will not support the old version of Caching Service using the Server app. Please see the origional cacher developer (https://github.com/erikng/Cacher) for support of older versions of the caching service. Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
+Updated Cacher to support High Sierra. This version will not support the old version of Caching Service using the Server app. Please see the original cacher developer (https://github.com/erikng/Cacher) for support of older versions of the caching service. Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
 
 High Sierra Apple Caching Log reporting
 
 Some of the things Cacher can display:
 - Total bandwidth served to clients
 - Total bandwidth requested from Apple
-- Total bandiwdth requested from other Caching servers
+- Total bandwidth requested from other Caching servers
 - Total IP Addresses
 - Total Unique IP Addresses.
 - Total iOS download requests including model type
@@ -44,7 +44,7 @@ Options:
   --slackwebhook=SLACKWEBHOOK
                         Optional: Slack Webhook URL. Requires Slack Option.
   --slackusername=SLACKUSERNAME
-                        Optional: Slack username. Defaults to Cacher.Requires
+                        Optional: Slack username. Defaults to Cacher. Requires
                         Slack Option.
   --slackchannel=SLACKCHANNEL
                         Optional: Slack channel. Can be username or channel
