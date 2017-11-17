@@ -302,8 +302,6 @@ def cacher(lines, targetDate, friendlyNames):
                     # Ex: '149.166.73.137:56833'. Split 6th string at ':' and
                     # pull only pull first value.
                     ip = linesplit[13].split(":")[0]
-                    print logmsg;
-                    print ip;
                     IPLog.append(ip)
                     #
                     #
