@@ -28,9 +28,9 @@ Last Updated: 06-08-2017
 
 Updated version for High Sierra
 Author: Joseph Clark
-Last Updated: 11-16-2017
+Last Updated: 11-17-2017
 """
-version = '10.13'
+version = '3.0.4'
 
 
 def cacher(lines, targetDate, friendlyNames):
@@ -301,7 +301,9 @@ def cacher(lines, targetDate, friendlyNames):
                     #
                     # Ex: '149.166.73.137:56833'. Split 6th string at ':' and
                     # pull only pull first value.
-                    ip = linesplit[5].split(":")[0]
+                    ip = linesplit[13].split(":")[0]
+                    print logmsg;
+                    print ip;
                     IPLog.append(ip)
                     #
                     #
@@ -782,18 +784,15 @@ def main():
     elif type(serverconfig) is str or type(serverconfig) is int:
         print "LogClientIdentity is incorrectly set to: %s - Type: %s" \
             % (str(serverconfig), type(serverconfig).__name__)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
     elif not serverconfig:
         print "LogClientIdentity is not set"
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
     else:
         print "LogClientIdentity is set to: %s" % str(serverconfig)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
 
     # Grab other options
@@ -825,43 +824,10 @@ def main():
         slackusername = 'Cacher'
     slackchannel = opts.slackchannel
 
-    # Check if log files exist and if not, bail. Try to delete .DS_Store files
-    # just in case they exist from the GUI. Chances are we can delete this
-    # because we are either running as root or the same user that created it.
-    #try:
-    #    os.remove(os.path.join(logPath, '.DS_Store'))
-    #except OSError:
-    #    pass
-    #if not os.listdir(logPath):
-    #    print 'Cacher did not detect log files in %s' % logPath
-    #    sys.exit(1)
-
-    # Make temporary directory
-    #tmpDir = tempfile.mkdtemp()
-
-    # Clone the contents of serverlogs over into the 'cachinglogs' subdirectory
-    #tmpLogs = os.path.join(tmpDir, 'cachinglogs')
-    #shutil.copytree(logPath, tmpLogs)
-
-    # Expand any .bz files in the directory (Server 4.1+)
-    #os.chdir(tmpLogs)
-    #for bzLog in glob.glob(os.path.join(tmpLogs, '*.bz2')):
-    #    result = subprocess.check_call(["bunzip2", bzLog])
-
-    # Now combine all .log files in the destination into a temp file that's
-    # removed when python exits
+    # Gather logs from Unified logging
     rawLog = subprocess.check_output('log show  --predicate \'subsystem == "com.apple.AssetCache"\' --debug --info', shell=True);
     rawLog = StringIO.StringIO(rawLog);
-    # We only care about Debug logs, not service logs
-    #for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
-    #    with open(anyLog, 'rb') as f:
-    #        shutil.copyfileobj(f, rawLog)
 
-    # Skip back to the beginning of our newly concatenated log
-    #rawLog.seek(0)
-
-    # Purge temporary directory since it's now in memory.
-    #shutil.rmtree(tmpDir)
 
     # Run the function that does most of the work.
     cacherdata = cacher(rawLog.readlines(), targetDate, friendlyNames)
