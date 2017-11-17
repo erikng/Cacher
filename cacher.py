@@ -14,19 +14,21 @@ import subprocess
 import sys
 import tempfile
 import urllib2
+import StringIO
 
 """Cacher rewritten in Python.
 Inspired by Michael Lynn https://gist.github.com/pudquick/ffdbdb52ae6960ca8e55
-
 This script will process Caching Server Debug Logs.
 You can output this data to stdout, send it to the Apple email alert mechanism,
 or send to a slack channel.
-
 Slack section adapted from another one of my tools (APInfo).
 https://github.com/erikng/scripts/tree/master/APInfo
-
 Author: Erik Gomez
 Last Updated: 06-08-2017
+
+Updated version for High Sierra
+Author: Joseph Clark
+Last Updated: 11-17-2017
 """
 version = '3.0.4'
 
@@ -176,12 +178,12 @@ def cacher(lines, targetDate, friendlyNames):
                 # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
                 # 39.2 MB stored from Internet, 0 bytes from peers
                 if 'Served all' in logmsg:
-                    total_served_size = linesplit[3]
-                    total_served_bwtype = linesplit[4]
-                    fromorigin_size = linesplit[12]
-                    fromoriginbwtype = linesplit[13]
-                    frompeers_size = linesplit[17]
-                    frompeersbwtype = linesplit[18]
+                    total_served_size = linesplit[12]
+                    total_served_bwtype = linesplit[13][:-1]
+                    fromorigin_size = linesplit[17]
+                    fromoriginbwtype = linesplit[13][:-1]
+                    frompeers_size = linesplit[21]
+                    frompeersbwtype = linesplit[13][:-1]
                     # Convert size of served to client to bytes
                     if total_served_bwtype == 'KB':
                         bytes_served = "%.0f" % (
@@ -232,13 +234,14 @@ def cacher(lines, targetDate, friendlyNames):
                     totalbytesfromorigin.append(bytesfromorigin)
                     totalbytesfrompeers.append(bytesfrompeers)
                 # Search through the logs for incomplete transactions (served)
-                if 'Served all' not in logmsg and 'Served' in logmsg:
-                    total_served_size = linesplit[2]
-                    total_served_bwtype = linesplit[3]
-                    fromorigin_size = linesplit[11]
-                    fromoriginbwtype = linesplit[12]
-                    frompeers_size = linesplit[16]
-                    frompeersbwtype = linesplit[17]
+               #
+                if 'Served all' not in logmsg and ' Served ' in logmsg:
+                    total_served_size = linesplit[12]
+                    total_served_bwtype = linesplit[13][:-1]
+                    fromorigin_size = linesplit[17]
+                    fromoriginbwtype = linesplit[13][:-1]
+                    frompeers_size = linesplit[21]
+                    frompeersbwtype = linesplit[13][:-1]
                     # Convert size of from cache to bytes
                     if total_served_bwtype == 'KB':
                         bytes_served = "%.0f" % (
@@ -290,7 +293,6 @@ def cacher(lines, targetDate, friendlyNames):
                     totalbytesfrompeers.append(bytesfrompeers)
                 # Beginning of Server downloads section
                 #
-                #
                 if 'Received GET request by' in logmsg:
                     noClientIdentityLog.append(logmsg)
                 elif 'Received GET request from' in logmsg:
@@ -299,7 +301,7 @@ def cacher(lines, targetDate, friendlyNames):
                     #
                     # Ex: '149.166.73.137:56833'. Split 6th string at ':' and
                     # pull only pull first value.
-                    ip = linesplit[5].split(":")[0]
+                    ip = linesplit[13].split(":")[0]
                     IPLog.append(ip)
                     #
                     #
@@ -407,7 +409,6 @@ def cacher(lines, targetDate, friendlyNames):
                 #
                 #
                 # End of Server downloads section
-
             # except:
                 # print x
                 # raise Exception("Funky line - check it out")
@@ -671,18 +672,9 @@ def convert_bytes_to_human_readable(number_of_bytes):
 
 def check_serverconfig():
     try:
-        config = '/Library/Server/Caching/Config/Config.plist'
+        config = '/Library/Preferences/com.apple.AssetCache.plist'
         plist = plistlib.readPlist(config)
         return plist['LogClientIdentity']
-    except Exception:
-        return None
-
-
-def get_serverversion():
-    try:
-        serverversion = '/Applications/Server.app/Contents/version.plist'
-        plist = plistlib.readPlist(serverversion)
-        return plist['CFBundleShortVersionString']
     except Exception:
         return None
 
@@ -711,45 +703,6 @@ def get_uptime():
     except Exception:
         return None
 
-
-def send_serveralert(targetDate, cacherdata):
-    try:
-        # Change to a directory to remove shell error
-        os.chdir('/private/tmp')
-        # Mehhhhhhhhhhhhhh
-        cmd = ['/Applications/Server.app/Contents/ServerRoot/usr/sbin/server '
-               'postAlert CustomAlert Common subject ' + '"'
-               'Caching Server Data: ' + targetDate + '"' + ' message '
-               '"' + cacherdata + '"<<<""']
-        subprocess.check_call(cmd, shell=True)
-    except Exception:
-        return None
-
-
-def configureserver():
-    try:
-        cmd = [
-            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
-            'admin', 'settings', 'caching:LogClientIdentity = yes']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        output, err = proc.communicate()
-        return output.rstrip()
-    except Exception:
-        return None
-
-
-def serveradmin(action, service):
-    try:
-        cmd = [
-            '/Applications/Server.app/Contents/ServerRoot/usr/sbin/server'
-            'admin', action, service]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        output, err = proc.communicate()
-        return output.rstrip()
-    except Exception:
-        return None
 
 
 def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
@@ -788,11 +741,11 @@ def post_to_slack(targetDate, cacherdata, slackchannel, slackusername,
 
 def main():
     # Check for macOS Server 5.2 or higher. Use LooseVersion just in case.
-    if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
-        pass
-    else:
-        print "Server version is %s and not compatible" % get_serverversion()
-        sys.exit(1)
+    #if LooseVersion(get_serverversion()) >= LooseVersion('5.2'):
+    #    pass
+    #else:
+    #    print "Server version is %s and not compatible" % get_serverversion()
+    #    sys.exit(1)
 
     # Options
     usage = '%prog [options]'
@@ -809,12 +762,6 @@ def main():
     o.add_option('--nostdout',
                  help='Optional: Do not print to standard out',
                  action='store_true')
-    o.add_option('--configureserver',
-                 help='Optional: Configure Server to log Client Data',
-                 action='store_true')
-    o.add_option('--serveralert',
-                 help='Optional: Send Server Alert',
-                 action='store_true')
     o.add_option("--slackalert", action="store_true", default=False,
                  help=("Optional: Use Slack"))
     o.add_option("--slackwebhook", default=None,
@@ -828,22 +775,6 @@ def main():
 
     opts, args = o.parse_args()
 
-    # Configure Server
-    if opts.configureserver:
-        configureServer = True
-    else:
-        configureServer = False
-    if configureServer:
-        if os.getuid() != 0:
-            print 'Did not configure Caching Server - requires root'
-            sys.exit(1)
-        else:
-            print 'Caching Server settings are now: ' + configureserver()
-            print '\nRestarting Caching Service...'
-            print '\n' + serveradmin('stop', 'caching')
-            print '\n' + serveradmin('start', 'caching')
-            sys.exit(1)
-
     # Check if LogClientIdentity is configured correctly. If it isn't - bail.
     serverconfig = check_serverconfig()
     if serverconfig is True:
@@ -851,18 +782,15 @@ def main():
     elif type(serverconfig) is str or type(serverconfig) is int:
         print "LogClientIdentity is incorrectly set to: %s - Type: %s" \
             % (str(serverconfig), type(serverconfig).__name__)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
     elif not serverconfig:
         print "LogClientIdentity is not set"
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
     else:
         print "LogClientIdentity is set to: %s" % str(serverconfig)
-        print "Please run sudo Cacher --configureserver and delete your " \
-            "log files."
+        print "Please run \"sudo -u _assetcache defaults write /Library/Preferences/com.apple.AssetCache.plist LogClientIdentity -bool True\""
         sys.exit(1)
 
     # Grab other options
@@ -882,10 +810,6 @@ def main():
         stdOut = False
     else:
         stdOut = True
-    if opts.serveralert:
-        serverAlert = True
-    else:
-        serverAlert = False
     if opts.slackalert:
         slackAlert = True
     else:
@@ -898,42 +822,10 @@ def main():
         slackusername = 'Cacher'
     slackchannel = opts.slackchannel
 
-    # Check if log files exist and if not, bail. Try to delete .DS_Store files
-    # just in case they exist from the GUI. Chances are we can delete this
-    # because we are either running as root or the same user that created it.
-    try:
-        os.remove(os.path.join(logPath, '.DS_Store'))
-    except OSError:
-        pass
-    if not os.listdir(logPath):
-        print 'Cacher did not detect log files in %s' % logPath
-        sys.exit(1)
+    # Gather logs from Unified logging
+    rawLog = subprocess.check_output('log show  --predicate \'subsystem == "com.apple.AssetCache"\' --debug --info', shell=True);
+    rawLog = StringIO.StringIO(rawLog);
 
-    # Make temporary directory
-    tmpDir = tempfile.mkdtemp()
-
-    # Clone the contents of serverlogs over into the 'cachinglogs' subdirectory
-    tmpLogs = os.path.join(tmpDir, 'cachinglogs')
-    shutil.copytree(logPath, tmpLogs)
-
-    # Expand any .bz files in the directory (Server 4.1+)
-    os.chdir(tmpLogs)
-    for bzLog in glob.glob(os.path.join(tmpLogs, '*.bz2')):
-        result = subprocess.check_call(["bunzip2", bzLog])
-
-    # Now combine all .log files in the destination into a temp file that's
-    # removed when python exits
-    rawLog = tempfile.TemporaryFile()
-    # We only care about Debug logs, not service logs
-    for anyLog in glob.glob(os.path.join(tmpLogs, 'Debug*')):
-        with open(anyLog, 'rb') as f:
-            shutil.copyfileobj(f, rawLog)
-
-    # Skip back to the beginning of our newly concatenated log
-    rawLog.seek(0)
-
-    # Purge temporary directory since it's now in memory.
-    shutil.rmtree(tmpDir)
 
     # Run the function that does most of the work.
     cacherdata = cacher(rawLog.readlines(), targetDate, friendlyNames)
@@ -942,11 +834,6 @@ def main():
         print("\n".join(cacherdata))
     if slackAlert:
         print ''
-    if serverAlert:
-        if os.getuid() != 0:
-            print 'Did not send serverAlert - requires root'
-        else:
-            send_serveralert(targetDate, "\n".join(cacherdata))
     if slackalert is True:
         post_to_slack(targetDate, "\n".join(cacherdata), slackchannel,
                       slackusername, slackwebhook)
