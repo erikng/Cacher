@@ -1,5 +1,5 @@
 # Cacher - High Sierra Edition
-Updated Cacher to support High Sierra. This version will not support the old version of Caching Service using the Server app. Please see the original cacher developer (https://github.com/erikng/Cacher) for support of older versions of the caching service. Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
+Updated Cacher to support High Sierra. This version will not support the old version of Caching Service using the Server app. Cacher is a python script that will parse the OS X Caching Server debug logs and present you (to the best of its abilities) serving statistics.
 
 High Sierra Apple Caching Log reporting
 
@@ -39,7 +39,6 @@ Options:
   --deviceids           Optional: Use Device IDs (Ex: iPhone7,2). Defaults to:
                         False
   --nostdout            Optional: Do not print to standard out
-  --serveralert         Optional: Send Server Alert
   --slackalert          Optional: Use Slack
   --slackwebhook=SLACKWEBHOOK
                         Optional: Slack Webhook URL. Requires Slack Option.
@@ -111,17 +110,6 @@ A total of 3513 iOS downloads were requested from the Caching Server yesterday c
 By default, Cacher will print the results to standard out. To skip this use the `--nostdout` option.
 
 `cacher.py --nostdout`
-
-### Server alert
-By default, Cacher will __no longer__ send a server alert. To send a server alert, use the `--serveralert` option.
-
-Please note that this option requires root/sudo level permissions.
-
-`sudo cacher.py --serveralert`
-
-If you attempt to use this option without elevated permissions, Cacher will write the following note to standard out.
-
-`Did not send serverAlert - requires root`
 
 ### Slack alert
 By default, Cacher will not send a server alert. To send a server alert, use the `--slackalert` option.
