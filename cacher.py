@@ -823,7 +823,7 @@ def main():
                  help=("Optional: Slack username. Defaults to Cacher."
                        "Requires Slack Option."))
     o.add_option("--slackchannel", default=None,
-                 help=("Optional: Slack channel. Can be username or channel "
+                 help=("Optional: Slack channel. Can be username or channel."
                        "Ex. #channel or @username. Requires Slack Option."))
 
     opts, args = o.parse_args()

@@ -4,7 +4,7 @@ Cacher is a python script that will parse the OS X Caching Server debug logs and
 Some of the things Cacher can display:
 - Total bandwidth served to clients
 - Total bandwidth requested from Apple
-- Total bandiwdth requested from other Caching servers
+- Total bandwidth requested from other Caching servers
 - Total IP Addresses
 - Total Unique IP Addresses.
 - Total iOS download requests including model type
@@ -26,7 +26,7 @@ Some of the things Cacher can display:
 ## Server support
 Cacher currently supports Server 5.2 and higher.
 
-- For Server 4 please see [this commit](https://github.com/erikng/Cacher/commit/17903d2dd29886c0dfc16054ae39b89f25581f79))
+- For Server 4 please see [this commit](https://github.com/erikng/Cacher/commit/17903d2dd29886c0dfc16054ae39b89f25581f79)
 - For Server 5-5.1 please see [this commit](https://github.com/erikng/Cacher/commit/57ea9c3c80c17bb29d4deb89cb07a2ae841613d9)
 
 ## Usage
@@ -48,10 +48,10 @@ Options:
   --slackwebhook=SLACKWEBHOOK
                         Optional: Slack Webhook URL. Requires Slack Option.
   --slackusername=SLACKUSERNAME
-                        Optional: Slack username. Defaults to Cacher.Requires
+                        Optional: Slack username. Defaults to Cacher. Requires
                         Slack Option.
   --slackchannel=SLACKCHANNEL
-                        Optional: Slack channel. Can be username or channel
+                        Optional: Slack channel. Can be username or channel.
                         Ex. #channel or @username. Requires Slack Option.
 ```
 
