@@ -14,6 +14,8 @@ import subprocess
 import sys
 import tempfile
 import urllib2
+import time
+import sqlite3
 
 """Cacher rewritten in Python.
 Inspired by Michael Lynn https://gist.github.com/pudquick/ffdbdb52ae6960ca8e55
@@ -28,10 +30,10 @@ https://github.com/erikng/scripts/tree/master/APInfo
 Author: Erik Gomez
 Last Updated: 06-08-2017
 """
-version = '3.0.4'
+version = '3.0.5'
 
 
-def cacher(lines, targetDate, friendlyNames):
+def cacher(lines, targetDate, friendlyNames, measurement):
     # Basically run through all the lines a single time and collect all the
     # relevant data to slice, do stats with, etc.
     noClientIdentityLog = []
@@ -157,6 +159,59 @@ def cacher(lines, targetDate, friendlyNames):
     totalbytesserved = []
     totalbytesfromorigin = []
     totalbytesfrompeers = []
+    totalbytesfromcache = []
+    if measurement == 'metrics':
+        target_date_start = targetDate + ':00.00:01'
+        target_date_stop = targetDate + ':23.59:59'
+        pattern = '%Y-%m-%d:%H.%M:%S'
+        target_epoch_start = int(
+            time.mktime(time.strptime(target_date_start, pattern)))
+        target_epoch_stop = int(
+            time.mktime(time.strptime(target_date_stop, pattern)))
+        conn = sqlite3.connect(
+            '/Library/Server/Caching/Logs/Metrics.sqlite')
+        c = conn.cursor()
+        sql_origin = """
+                    SELECT dataValue
+                    FROM statsData
+                    WHERE metricName
+                    LIKE 'bytes.fromorigin.toclients'
+                    AND collectionDate > '%s'
+                    AND collectionDate < '%s'
+                    """ % (target_epoch_start, target_epoch_stop)
+        c.execute(sql_origin)
+        bytes_fromorigin = c.fetchall()
+        sql_cache = """
+                    SELECT dataValue
+                    FROM statsData
+                    WHERE metricName
+                    LIKE 'bytes.fromcache.toclients'
+                    AND collectionDate > '%s'
+                    AND collectionDate < '%s'
+                    """ % (target_epoch_start, target_epoch_stop)
+        c.execute(sql_cache)
+        bytes_fromcache = c.fetchall()
+        sql_peers = """
+                    SELECT dataValue
+                    FROM statsData
+                    WHERE metricName
+                    LIKE 'bytes.frompeers.toclients'
+                    AND collectionDate > '%s'
+                    AND collectionDate < '%s'
+                    """ % (target_epoch_start, target_epoch_stop)
+        c.execute(sql_peers)
+        bytes_frompeers = c.fetchall()
+        conn.close()
+        for origin_bytes in bytes_fromorigin:
+            totalbytesfromorigin.append(origin_bytes[0])
+        for cache_bytes in bytes_fromcache:
+            totalbytesfromcache.append(cache_bytes[0])
+        for peers_bytes in bytes_frompeers:
+            totalbytesfrompeers.append(peers_bytes[0])
+        totalbytesserved = (
+            totalbytesfromcache +
+            totalbytesfromorigin +
+            totalbytesfrompeers)
     for x in lines:
         # If there aren't at least 3 pieces somehow, they'll get filled in
         # with blanks
@@ -167,127 +222,128 @@ def cacher(lines, targetDate, friendlyNames):
                 linesplit = str.split(logmsg)
                 # split the logmsg line (by spaces) so I can hardcode some
                 # calls. Fragile (could break with a Server update) but it meh.
+                if measurement == 'logs':
+                    # Beginning of Server bandwidth section
+                    #
+                    # This is a slightly less fragile method to calculate the
+                    # amount of data the caching server has served.
+                    # Eg:
+                    # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
+                    # 39.2 MB stored from Internet, 0 bytes from peers
+                    if 'Served all' in logmsg:
+                        total_served_size = linesplit[3]
+                        total_served_bwtype = linesplit[4]
+                        fromorigin_size = linesplit[12]
+                        fromoriginbwtype = linesplit[13]
+                        frompeers_size = linesplit[17]
+                        frompeersbwtype = linesplit[18]
+                        # Convert size of served to client to bytes
+                        if total_served_bwtype == 'KB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000)
+                        elif total_served_bwtype == 'MB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000)
+                        elif total_served_bwtype == 'GB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000000)
+                        elif total_served_bwtype == 'TB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000000000)
+                        elif total_served_bwtype == 'bytes':
+                            bytes_served = total_served_size
+                        # Convert size of from internet(origin) to bytes
+                        if fromoriginbwtype == 'KB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000)
+                        elif fromoriginbwtype == 'MB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000)
+                        elif fromoriginbwtype == 'GB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000000)
+                        elif fromoriginbwtype == 'TB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000000000)
+                        elif fromoriginbwtype == 'bytes':
+                            bytesfromorigin = fromorigin_size
+                        # Convert size of from peers to bytes
+                        if frompeersbwtype == 'KB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000)
+                        elif frompeersbwtype == 'MB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000)
+                        elif frompeersbwtype == 'GB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000000)
+                        elif frompeersbwtype == 'TB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000000000)
+                        elif frompeersbwtype == 'bytes':
+                            bytesfrompeers = frompeers_size
+                        # Append each bw size to the total count
+                        totalbytesserved.append(bytes_served)
+                        totalbytesfromorigin.append(bytesfromorigin)
+                        totalbytesfrompeers.append(bytesfrompeers)
+            # Search through the logs for incomplete transactions (served)
+                    if 'Served all' not in logmsg and 'Served' in logmsg:
+                        total_served_size = linesplit[2]
+                        total_served_bwtype = linesplit[3]
+                        fromorigin_size = linesplit[11]
+                        fromoriginbwtype = linesplit[12]
+                        frompeers_size = linesplit[16]
+                        frompeersbwtype = linesplit[17]
+                        # Convert size of from cache to bytes
+                        if total_served_bwtype == 'KB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000)
+                        elif total_served_bwtype == 'MB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000)
+                        elif total_served_bwtype == 'GB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000000)
+                        elif total_served_bwtype == 'TB':
+                            bytes_served = "%.0f" % (
+                                float(total_served_size) * 1000000000000)
+                        elif total_served_bwtype == 'bytes':
+                            bytes_served = total_served_size
+                        # Convert size of from internet(origin) to bytes
+                        if fromoriginbwtype == 'KB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000)
+                        elif fromoriginbwtype == 'MB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000)
+                        elif fromoriginbwtype == 'GB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000000)
+                        elif fromoriginbwtype == 'TB':
+                            bytesfromorigin = "%.0f" % (
+                                float(fromorigin_size) * 1000000000000)
+                        elif fromoriginbwtype == 'bytes':
+                            bytesfromorigin = fromorigin_size
+                        # Convert size of from peers to bytes
+                        if frompeersbwtype == 'KB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000)
+                        elif frompeersbwtype == 'MB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000)
+                        elif frompeersbwtype == 'GB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000000)
+                        elif frompeersbwtype == 'TB':
+                            bytesfrompeers = "%.0f" % (
+                                float(frompeers_size) * 1000000000000)
+                        elif frompeersbwtype == 'bytes':
+                            bytesfrompeers = frompeers_size
+                        # Append each bw size to the total count
+                        totalbytesserved.append(bytes_served)
+                        totalbytesfromorigin.append(bytesfromorigin)
+                        totalbytesfrompeers.append(bytesfrompeers)
 
-                # Beginning of Server bandwidth section
-                #
-                # This is a slightly less fragile method to calculate the
-                # amount of data the caching server has served.
-                # Eg:
-                # Served all 39.2 MB of 39.2 MB; 3 KB from cache,
-                # 39.2 MB stored from Internet, 0 bytes from peers
-                if 'Served all' in logmsg:
-                    total_served_size = linesplit[3]
-                    total_served_bwtype = linesplit[4]
-                    fromorigin_size = linesplit[12]
-                    fromoriginbwtype = linesplit[13]
-                    frompeers_size = linesplit[17]
-                    frompeersbwtype = linesplit[18]
-                    # Convert size of served to client to bytes
-                    if total_served_bwtype == 'KB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1024)
-                    elif total_served_bwtype == 'MB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1048576)
-                    elif total_served_bwtype == 'GB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1073741824)
-                    elif total_served_bwtype == 'TB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1099511627776)
-                    elif total_served_bwtype == 'bytes':
-                        bytes_served = total_served_size
-                    # Convert size of from internet(origin) to bytes
-                    if fromoriginbwtype == 'KB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1024)
-                    elif fromoriginbwtype == 'MB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1048576)
-                    elif fromoriginbwtype == 'GB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1073741824)
-                    elif fromoriginbwtype == 'TB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1099511627776)
-                    elif fromoriginbwtype == 'bytes':
-                        bytesfromorigin = fromorigin_size
-                    # Convert size of from peers to bytes
-                    if frompeersbwtype == 'KB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1024)
-                    elif frompeersbwtype == 'MB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1048576)
-                    elif frompeersbwtype == 'GB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1073741824)
-                    elif frompeersbwtype == 'TB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1099511627776)
-                    elif frompeersbwtype == 'bytes':
-                        bytesfrompeers = frompeers_size
-                    # Append each bw size to the total count
-                    totalbytesserved.append(bytes_served)
-                    totalbytesfromorigin.append(bytesfromorigin)
-                    totalbytesfrompeers.append(bytesfrompeers)
-                # Search through the logs for incomplete transactions (served)
-                if 'Served all' not in logmsg and 'Served' in logmsg:
-                    total_served_size = linesplit[2]
-                    total_served_bwtype = linesplit[3]
-                    fromorigin_size = linesplit[11]
-                    fromoriginbwtype = linesplit[12]
-                    frompeers_size = linesplit[16]
-                    frompeersbwtype = linesplit[17]
-                    # Convert size of from cache to bytes
-                    if total_served_bwtype == 'KB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1024)
-                    elif total_served_bwtype == 'MB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1048576)
-                    elif total_served_bwtype == 'GB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1073741824)
-                    elif total_served_bwtype == 'TB':
-                        bytes_served = "%.0f" % (
-                            float(total_served_size) * 1099511627776)
-                    elif total_served_bwtype == 'bytes':
-                        bytes_served = total_served_size
-                    # Convert size of from internet(origin) to bytes
-                    if fromoriginbwtype == 'KB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1024)
-                    elif fromoriginbwtype == 'MB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1048576)
-                    elif fromoriginbwtype == 'GB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1073741824)
-                    elif fromoriginbwtype == 'TB':
-                        bytesfromorigin = "%.0f" % (
-                            float(fromorigin_size) * 1099511627776)
-                    elif fromoriginbwtype == 'bytes':
-                        bytesfromorigin = fromorigin_size
-                    # Convert size of from peers to bytes
-                    if frompeersbwtype == 'KB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1024)
-                    elif frompeersbwtype == 'MB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1048576)
-                    elif frompeersbwtype == 'GB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1073741824)
-                    elif frompeersbwtype == 'TB':
-                        bytesfrompeers = "%.0f" % (
-                            float(frompeers_size) * 1099511627776)
-                    elif frompeersbwtype == 'bytes':
-                        bytesfrompeers = frompeers_size
-                    # Append each bw size to the total count
-                    totalbytesserved.append(bytes_served)
-                    totalbytesfromorigin.append(bytesfromorigin)
-                    totalbytesfrompeers.append(bytesfrompeers)
                 # Beginning of Server downloads section
                 #
                 #
@@ -441,8 +497,8 @@ def cacher(lines, targetDate, friendlyNames):
 
     # Total Numbers of IP addresses
     finalOutput.append(
-        '%s IP Addresses hit the Caching Server yesterday consisting'
-        ' of:' % len(IPLog))
+        '%s IP Addresses hit the Caching Server on %s consisting'
+        ' of:' % (len(IPLog), targetDate))
     finalOutput.append('  %s Unique IP Addresses.' % len(set(IPLog)))
     finalOutput.append('')
 
@@ -451,8 +507,8 @@ def cacher(lines, targetDate, friendlyNames):
     if len(iOSModelOnlyLog) > 0:
         finalOutput.append(
             'A total of %s iOS downloads were requested '
-            'from the Caching Server yesterday consisting of:'
-            % len(iOSModelOnlyLog))
+            'from the Caching Server on %s consisting of:'
+            % (len(iOSModelOnlyLog), targetDate))
 
     # Sort the list by device type (AppleTV, iPad, iPhone, iPod). If we aren't
     # using the friendly names, we use the standard sorting, but if we use the
@@ -549,7 +605,7 @@ def cacher(lines, targetDate, friendlyNames):
     if len(OSLog) > 0:
         finalOutput.append(
             'A total of %s OS downloads were requested from the Caching Server'
-            ' yesterday consisting of:' % len(OSLog))
+            ' on %s consisting of:' % (len(OSLog), targetDate))
     for x in sorted(set(OSLog)):
         numberofVersions = OSLog.count(x)
         osversion = x[0]
@@ -595,7 +651,7 @@ def cacher(lines, targetDate, friendlyNames):
     if len(fileTypeLog) > 0:
         finalOutput.append(
             'A total of %s files were downloaded from the Caching'
-            ' Server yesterday consisting of:' % len(fileTypeLog))
+            ' Server on %s consisting of:' % (len(fileTypeLog), targetDate))
     for x in set(fileTypeLog):
         numberofFiles = fileTypeLog.count(x)
         finalOutput.append(' %s %s files' % (numberofFiles, x))
@@ -606,8 +662,8 @@ def cacher(lines, targetDate, friendlyNames):
     if len(urlUniqueLog) > 0:
         finalOutput.append(
             'A total of %s unique files were downloaded from the'
-            ' Caching Server yesterday consisting'
-            ' of:' % len(urlUniqueLog))
+            ' Caching Server on %s consisting of:'
+            % (len(urlUniqueLog), targetDate))
     # Same logic taken from "File Type Section" so I'm not documenting it.
     for x in urlUniqueLog:
         if re.match(r'.+(\.pkg|\.ipa|\.ipsw|\.zip|\.epub)', x):
@@ -645,7 +701,7 @@ def convert_bytes_to_human_readable(number_of_bytes):
     if number_of_bytes < 0:
         raise ValueError("ERROR: number of bytes can not be less than 0")
 
-    step_to_greater_unit = 1024.
+    step_to_greater_unit = 1000.
     number_of_bytes = float(number_of_bytes)
     unit = 'bytes'
     if (number_of_bytes / step_to_greater_unit) >= 1:
@@ -797,6 +853,12 @@ def main():
     # Options
     usage = '%prog [options]'
     o = optparse.OptionParser(usage=usage)
+    o.add_option('--measurement',
+                 help=('Optional: Measurement source, use either'
+                       ' logs or metrics to specify either the Debug'
+                       ' logs or metrics sqlite db as the source for'
+                       ' calculating bandwith statistics'
+                       ' Defaults to use metrics sqlite db'))
     o.add_option('--targetdate',
                  help=('Optional: Date to parse. Example: 2017-01-15.'))
     o.add_option('--logpath',
@@ -866,6 +928,10 @@ def main():
         sys.exit(1)
 
     # Grab other options
+    if opts.measurement:
+        measurement = opts.measurement
+    else:
+        measurement = 'metrics'
     if opts.targetdate:
         targetDate = opts.targetdate
     else:
@@ -909,6 +975,12 @@ def main():
         print 'Cacher did not detect log files in %s' % logPath
         sys.exit(1)
 
+    # If metrics was passed, check to ensure we have a metrics db first
+    if measurement == 'metrics':
+        if not os.path.exists('/Library/Server/Caching/Logs/Metrics.sqlite'):
+            print 'Cacher did not detect the Metrics.sqlite.'
+            sys.exit(1)
+
     # Make temporary directory
     tmpDir = tempfile.mkdtemp()
 
@@ -936,7 +1008,8 @@ def main():
     shutil.rmtree(tmpDir)
 
     # Run the function that does most of the work.
-    cacherdata = cacher(rawLog.readlines(), targetDate, friendlyNames)
+    cacherdata = cacher(
+        rawLog.readlines(), targetDate, friendlyNames, measurement)
     # Output conditionals
     if stdOut:
         print("\n".join(cacherdata))
